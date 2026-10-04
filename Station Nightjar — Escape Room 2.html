@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Station Nightjar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Allerta+Stencil&amp;family=IBM+Plex+Sans+Condensed:ital,wght@0,400;0,600;1,400&amp;family=Courier+Prime:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --surround:#b9b7a6;
+  --surround-ink:#23261f;
+  --hull:#1b1f1b;
+  --hull-2:#262b25;
+  --brass:#a39d6a;
+  --brass-hi:#e0d692;
+  --brass-lo:#55522f;
+  --amber:#ffb000;
+  --paper:#e6e1cf;
+  --paper-ink:#1f211c;
+  --verdigris:#8fb39a;
+  --alarm:#d93a2b;
+  --serif:"IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --sc:"Allerta Stencil", Impact, "Arial Black", sans-serif;
+  --tape:"Courier Prime", "Courier New", Courier, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --surround:#0a0c0a; --surround-ink:#c7c3ad; }
+}
+:root[data-theme="dark"]{ --surround:#0a0c0a; --surround-ink:#c7c3ad; }
+html{ height:100%; scroll-padding-top:env(safe-area-inset-top,0px); }
+*,*::before,*::after{ box-sizing:inherit; }
+body{ margin:0; height:100%; background:var(--surround); color:var(--surround-ink); font-family:var(--serif); overflow:hidden; -webkit-tap-highlight-color:transparent; }
+button{ font-family:inherit; }
+:focus-visible{ outline:2px solid var(--brass-hi); outline-offset:2px; }
+
+#app{ height:100%; display:flex; flex-direction:column; }
+
+/* ---------- HUD ---------- */
+#hud{ flex:0 0 auto; display:flex; align-items:center; gap:.6rem; padding:.45rem .8rem; background:linear-gradient(#262b25,#151815); border-bottom:2px solid var(--brass-lo); color:var(--paper); }
+#hud h1{ margin:0; font-family:var(--sc); font-weight:400; font-size:1.15rem; letter-spacing:.04em; color:var(--brass-hi); white-space:nowrap; }
+#hud .spacer{ flex:1; }
+#timer{ font-family:var(--tape); font-weight:700; font-size:1.05rem; color:#ff3a20; text-shadow:0 0 8px rgba(255,58,32,.6); min-width:4.5em; text-align:right; }
+.hbtn{ background:linear-gradient(#3a4a55,#25323c); color:var(--paper); border:1px solid var(--brass-lo); border-radius:3px; padding:.3rem .7rem; font-size:.95rem; cursor:pointer; }
+.hbtn:hover{ border-color:var(--brass-hi); color:#fff; }
+.hbtn .n{ font-family:var(--tape); color:var(--amber); font-size:.8rem; }
+
+/* ---------- Stage ---------- */
+#stage-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:.4rem; }
+#stage{ position:relative; aspect-ratio:16/9; width:min(100%, calc((100dvh - 9.5rem - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 16 / 9)); max-height:100%; background:#05080b; overflow:hidden; border:2px solid var(--brass-lo); box-shadow:0 0 0 1px #000, 0 10px 40px rgba(0,0,0,.5); user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+.layer{ position:absolute; inset:0; will-change:transform,opacity; }
+.layer svg{ width:100%; height:100%; display:block; }
+.layer.hidden{ visibility:hidden; }
+#grain{ position:absolute; inset:0; pointer-events:none; opacity:.09; mix-blend-mode:overlay; z-index:5; }
+#vignette{ position:absolute; inset:0; pointer-events:none; z-index:6; background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+#flash{ position:absolute; inset:0; pointer-events:none; z-index:7; background:#cfe3ff; opacity:0; mix-blend-mode:screen; }
+#flash.on{ animation:lightning 1.1s ease-out; }
+@keyframes lightning{ 0%{opacity:0} 4%{opacity:.35} 9%{opacity:.05} 14%{opacity:.28} 40%{opacity:0} 100%{opacity:0} }
+#back{ position:absolute; left:1.2%; bottom:2%; z-index:8; display:none; background:rgba(14,20,26,.78); color:var(--paper); border:1px solid var(--brass); border-radius:20px; padding:.35rem .9rem .35rem .7rem; font-size:1rem; cursor:pointer; }
+#back:hover{ background:rgba(40,52,62,.9); }
+#caption{ position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); z-index:8; max-width:72%; text-align:center; pointer-events:none; color:#f3ead4; font-size:clamp(.8rem,1.5vw,1.1rem); font-style:italic; text-shadow:0 1px 3px #000, 0 0 12px #000; opacity:0; transition:opacity .25s; }
+#caption.on{ opacity:1; }
+#toast{ position:absolute; left:50%; top:3%; transform:translate(-50%,-10px); z-index:9; max-width:80%; background:rgba(12,18,23,.9); border:1px solid var(--brass); color:var(--paper); padding:.5rem 1rem; border-radius:3px; font-size:clamp(.82rem,1.5vw,1.05rem); line-height:1.4; opacity:0; transition:opacity .3s, transform .3s; pointer-events:none; text-align:center; }
+#toast.on{ opacity:1; transform:translate(-50%,0); }
+
+/* hotspots */
+.hot{ cursor:pointer; }
+.hot .hl{ fill:transparent; stroke:transparent; }
+.hot:hover .hl, .hot:focus .hl{ stroke:rgba(230,201,127,.55); stroke-width:3; fill:rgba(230,201,127,.06); }
+.hot:hover .glowme{ filter:url(#hoverGlow); }
+.selmode .usable .hl{ stroke:rgba(242,181,82,.5); stroke-dasharray:8 6; stroke-width:2; animation:march 1s linear infinite; }
+@keyframes march{ to{ stroke-dashoffset:-28; } }
+
+/* generic SVG animation helpers */
+.tr{ transition:transform .7s cubic-bezier(.3,.7,.2,1), opacity .5s; transform-box:fill-box; }
+.drop{ animation:rain .55s linear infinite; }
+@keyframes rain{ from{ transform:translate(0,-60px);} to{ transform:translate(-18px,140px);} }
+.flicker{ animation:flick 2.2s infinite; transform-box:fill-box; transform-origin:50% 100%; }
+@keyframes flick{ 0%,100%{transform:scale(1,1); opacity:1} 30%{transform:scale(.94,1.07); opacity:.92} 55%{transform:scale(1.04,.95)} 75%{transform:scale(.97,1.04); opacity:.96} }
+.dust{ animation:dust 9s ease-in-out infinite; }
+@keyframes dust{ 0%,100%{ transform:translate(0,0); opacity:.0 } 30%{opacity:.7} 50%{ transform:translate(14px,-20px); opacity:.5 } 80%{opacity:.6} }
+.sway{ animation:sway 2s ease-in-out infinite alternate; transform-box:view-box; }
+@keyframes sway{ from{ transform:rotate(-9deg);} to{ transform:rotate(9deg);} }
+.spin{ animation:spin 4s linear infinite; transform-box:fill-box; transform-origin:center; }
+.spin.rev{ animation-direction:reverse; }
+.spin.fast{ animation-duration:1.6s; }
+@keyframes spin{ to{ transform:rotate(360deg);} }
+.sweep{ animation:sweep 6s linear infinite; transform-box:view-box; }
+@keyframes sweep{ 0%{ opacity:0 } 15%{opacity:.9} 35%{opacity:0} 100%{opacity:0} }
+.wave{ animation:wave 5s ease-in-out infinite alternate; }
+@keyframes wave{ from{ transform:translateX(-30px);} to{ transform:translateX(30px);} }
+.shake{ animation:shake .45s; transform-box:fill-box; }
+@keyframes shake{ 0%,100%{transform:translateX(0)} 20%{transform:translateX(-9px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(4px)} }
+.pulse{ animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{opacity:.35} 50%{opacity:1} }
+
+/* ---------- Inventory ---------- */
+#inv{ flex:0 0 auto; display:flex; align-items:center; gap:.5rem; padding:.45rem .8rem; background:linear-gradient(#151815,#262b25); border-top:2px solid var(--brass-lo); min-height:4.6rem; overflow-x:auto; }
+#inv .lbl{ font-family:var(--sc); color:var(--brass); font-size:.95rem; margin-right:.3rem; white-space:nowrap; }
+.slot{ flex:0 0 auto; width:3.6rem; height:3.6rem; border:1px solid #3d4b55; background:radial-gradient(#2a3843,#18232b); border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; padding:0; }
+.slot svg{ width:82%; height:82%; }
+.slot:hover{ border-color:var(--brass); }
+.slot.sel{ border-color:var(--amber); box-shadow:0 0 0 2px rgba(242,181,82,.35), 0 0 14px rgba(242,181,82,.4); }
+.slot.new{ animation:newitem 1.2s ease-out; }
+@keyframes newitem{ 0%{ transform:scale(1.5); box-shadow:0 0 30px var(--amber);} 100%{ transform:scale(1);} }
+.slot.empty{ cursor:default; opacity:.4; }
+#invhelp{ color:#8d9aa3; font-size:.85rem; font-style:italic; margin-left:auto; white-space:nowrap; padding-left:.5rem; }
+
+/* ---------- Modal ---------- */
+#modal{ position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:rgba(3,6,9,.72); backdrop-filter:blur(2px); padding:1rem; }
+#modal.on{ display:flex; }
+#mbox{ position:relative; max-width:min(1000px,96vw); max-height:92dvh; overflow:auto; background:var(--hull); border:2px solid var(--brass-lo); color:var(--paper); padding:1.3rem 1.5rem 1.2rem; border-radius:3px; box-shadow:0 20px 60px rgba(0,0,0,.6); animation:mopen .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes mopen{ from{ transform:scale(.92) translateY(14px); opacity:0;} }
+#mbox h2{ margin:0 0 .6rem; font-family:var(--sc); font-weight:400; color:var(--brass-hi); font-size:1.45rem; }
+#mclose{ position:absolute; right:.6rem; top:.5rem; background:none; border:none; color:var(--paper); font-size:1.6rem; cursor:pointer; line-height:1; }
+.mtext{ line-height:1.55; font-size:1.05rem; max-width:62ch; }
+.paper{ background:linear-gradient(135deg,#efe3c6,#ddcba4); color:var(--paper-ink); padding:1.4rem 1.6rem; border-radius:2px; box-shadow:inset 0 0 40px rgba(110,80,30,.35); }
+.mbtns{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.9rem; }
+.mbtn{ background:linear-gradient(#c9a552,#8a6a2a); color:#1b130a; border:1px solid #5c4318; border-radius:3px; padding:.4rem 1rem; font-size:1rem; cursor:pointer; font-family:var(--serif); }
+.mbtn:hover{ filter:brightness(1.12); }
+.mbtn.ghost{ background:transparent; color:var(--paper); border-color:var(--brass-lo); }
+.mbtn:disabled{ opacity:.45; cursor:default; filter:none; }
+
+/* log book */
+.book{ display:flex; gap:0; perspective:1600px; }
+.page{ flex:1; min-height:24rem; width:min(36rem,86vw); padding:1.6rem 1.8rem; background:linear-gradient(90deg,#d9c79f,#ecdfc2 8%,#efe4c9); color:var(--paper-ink); font-size:1.08rem; line-height:1.6; box-shadow:inset 0 0 50px rgba(120,85,30,.35); border-radius:2px; position:relative; transform-origin:left center; }
+.page.turn{ animation:turn .6s ease-in-out; }
+@keyframes turn{ 0%{ transform:rotateY(0)} 50%{ transform:rotateY(-80deg); filter:brightness(.7)} 100%{ transform:rotateY(0)} }
+.page h3{ font-family:var(--sc); font-weight:400; margin:0 0 .5rem; font-size:1.2rem; }
+.page .pno{ position:absolute; bottom:.6rem; right:1rem; font-style:italic; opacity:.6; font-size:.9rem; }
+.ph{ position:relative; }
+.lit .ph::after{ content:""; position:absolute; left:50%; top:-.25em; width:5px; height:5px; margin-left:-2.5px; border-radius:50%; background:#fff6c8; box-shadow:0 0 6px 3px #ffd36b; }
+.lit .ph{ color:#7a2a08; text-shadow:0 0 8px rgba(255,190,80,.9); }
+.dimnote{ font-style:italic; color:#6b5634; font-size:.95rem; margin-top:.6rem; }
+
+/* tables */
+.ttab{ border-collapse:collapse; font-size:1rem; }
+.ttab th,.ttab td{ border:1px solid #9a835a; padding:.3rem .55rem; text-align:center; }
+.ttab th{ font-family:var(--sc); font-weight:400; background:rgba(150,110,50,.15); }
+.morsegrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(6.2rem,1fr)); gap:.25rem .9rem; font-size:1.05rem; }
+.morsegrid span b{ display:inline-block; width:1.3em; font-family:var(--sc); }
+.morsegrid span i{ font-family:var(--tape); font-style:normal; letter-spacing:.12em; }
+.tapeview{ font-family:var(--tape); font-size:1.15rem; letter-spacing:.15em; background:#f4ecd6; color:#20160c; padding:.8rem 1rem; border-radius:2px; word-break:break-all; line-height:1.9; max-height:16rem; overflow:auto; }
+
+/* journal / hints */
+.jlist{ margin:0; padding-left:1.1rem; line-height:1.55; }
+.jlist li{ margin-bottom:.35rem; }
+.hint{ border-left:3px solid var(--brass-lo); padding:.3rem .8rem; margin:.5rem 0; background:rgba(255,255,255,.03); line-height:1.5; }
+.goal{ color:var(--amber); font-style:italic; margin-bottom:.4rem; }
+
+/* overlays */
+.overlay{ position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; padding:1.2rem; background:radial-gradient(ellipse at 50% 80%, #2a1210 0%, #0d0e0c 60%, #050605 100%); color:var(--paper); }
+.overlay.on{ display:flex; }
+.ovin{ max-width:44rem; text-align:left; }
+.ovin .t1{ font-family:var(--sc); font-size:clamp(2.4rem,7vw,4.6rem); line-height:.95; color:#e9e2c4; margin:0; letter-spacing:.01em; }
+.ovin .t2{ font-style:italic; color:var(--verdigris); font-size:clamp(1rem,2.2vw,1.3rem); margin:.5rem 0 1.4rem; }
+.ovin p{ line-height:1.65; font-size:clamp(1rem,1.9vw,1.15rem); max-width:60ch; }
+.ovin .mbtns{ margin-top:1.6rem; }
+#intro-beam{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.stat{ display:inline-block; margin-right:2rem; }
+.stat b{ display:block; font-family:var(--tape); font-size:1.6rem; color:var(--amber); font-weight:400; }
+
+@media (max-width:640px){
+  #hud h1{ font-size:.95rem; }
+  .hbtn{ padding:.25rem .45rem; font-size:.85rem; }
+  #invhelp{ display:none; }
+  .slot{ width:3rem; height:3rem; }
+}
+@media (prefers-reduced-motion: reduce){
+  .drop,.dust,.wave,.sway{ animation:none; }
+}
+</style>
+<script type='text/javascript' nonce='562wA6ltcVJSangIljSH/Q==' src='https://cd2368ee-bf71-40d4-a30f-b974fec3bacc.frame.claudeusercontent.com/2Pqu5MaXCuixXveXxEkdYEUafXy9Q0QY63Nyvf_519jKkBqMsV8SZ4Phbp5uSpNayES9-QCOj9cvWhnK2flkT4W1jPhOtFTY4v22J-NmynIwYwg9Upjto4wV5DWUbWB-V1-s1gI2X48tfLRvm26QI9k5EUn1c0edaUqbIM7UYdE-WIrb2W06N5Xd4ENStFW0PCQpd2EWXbh-0lwtPLl21u4lqYp9WQHfzpplFYpY5z7CvGfSuJLh4XGYfh_CTmU15KFlD1Jn2WTxukdXDou_Qq0Z_44DmSsvQTOiLNHiYziV5Wp7psbVmjThuE1M2DBuBLIQM0EzokNJiz2McraM1zbhBg-L82lKF6Pua-ImRtLf-ieO0FjykBrBhO4br1FHKQ5vGujZceoIc03Xfj7s6uHoyFKz1dHUfkhtcR8K3t4s99RQd-ygjXQ_H5i85Wv4ffZrRhgbeEN1dEZ8vE64u4m60oNyL8wV0SFPb9Yd9JAJMIRSg9EQqP32w_r1wVA1pwTzR1r7MFjBUcUMQu417U4OHVNl9A1eQUJl-3-TbRATcC8WTiWi0HjsrUfsN1gZQI_8aOwJKhy2gpF3wxfscXFW961WOwE5oaKpWqkVlPiLL3FC7hAXhPgTaY0xp93xM6N2aKKrZazyu4gxn1dyWEqLN7UvptObvnr7-YB9T6Z5OMR9_IDEu9BRoqlhjah6rABrVhYAIyX6Y5-TjzwCBQ'></script></head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <lineargradient id="gWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a5434"/><stop offset="1" stop-color="#4b3220"/></linearGradient>
+  <lineargradient id="gWoodTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8d6640"/><stop offset="1" stop-color="#5f4129"/></linearGradient>
+  <lineargradient id="gWoodDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3020"/><stop offset="1" stop-color="#2a1b11"/></linearGradient>
+  <lineargradient id="gBrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3dc95"/><stop offset=".45" stop-color="#c39a45"/><stop offset="1" stop-color="#6e5221"/></linearGradient>
+  <lineargradient id="gBrassH" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7a5b24"/><stop offset=".5" stop-color="#e9cc82"/><stop offset="1" stop-color="#7a5b24"/></linearGradient>
+  <radialgradient id="gBrassR" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#f6e2a2"/><stop offset=".5" stop-color="#bf9440"/><stop offset="1" stop-color="#5e4419"/></radialGradient>
+  <lineargradient id="gIron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#565c63"/><stop offset="1" stop-color="#25292e"/></linearGradient>
+  <lineargradient id="gWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c262e"/><stop offset=".7" stop-color="#2a3640"/><stop offset="1" stop-color="#202a32"/></linearGradient>
+  <lineargradient id="gFloor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2a1d"/><stop offset="1" stop-color="#1e150e"/></linearGradient>
+  <lineargradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a131c"/><stop offset=".7" stop-color="#1e3343"/><stop offset="1" stop-color="#2b4352"/></linearGradient>
+  <lineargradient id="gSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f3a44"/><stop offset="1" stop-color="#081419"/></linearGradient>
+  <lineargradient id="gPaper" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#efe3c6"/><stop offset="1" stop-color="#cfbb91"/></linearGradient>
+  <lineargradient id="gGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cfe8ee" stop-opacity=".35"/><stop offset=".5" stop-color="#8fb7c2" stop-opacity=".12"/><stop offset="1" stop-color="#d9f1f5" stop-opacity=".3"/></linearGradient>
+  <radialgradient id="gLampGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffcf7a" stop-opacity=".55"/><stop offset=".4" stop-color="#f2a03c" stop-opacity=".18"/><stop offset="1" stop-color="#f2a03c" stop-opacity="0"/></radialGradient>
+  <radialgradient id="gFlame" cx=".5" cy=".7" r=".6"><stop offset="0" stop-color="#fff9dc"/><stop offset=".45" stop-color="#ffc24a"/><stop offset="1" stop-color="#e5651c" stop-opacity="0"/></radialGradient>
+  <radialgradient id="gBeamDot" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fffbe6"/><stop offset=".3" stop-color="#ffd877" stop-opacity=".9"/><stop offset="1" stop-color="#ffb84a" stop-opacity="0"/></radialGradient>
+  <lineargradient id="gBeam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6cf" stop-opacity=".75"/><stop offset="1" stop-color="#fff6cf" stop-opacity="0"/></linearGradient>
+  <radialgradient id="gHole" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".8"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+  <pattern id="pStone" width="140" height="70" patternunits="userSpaceOnUse">
+    <rect width="140" height="70" fill="none"/>
+    <path d="M0 0H140M0 35H140M30 0V35M100 0V35M65 35V70M135 35V70" stroke="#0d1419" stroke-width="2" opacity=".55"/>
+    <path d="M2 2H138M2 37H138" stroke="#4a5a66" stroke-width="1" opacity=".25"/>
+  </pattern>
+  <pattern id="pGrain" width="300" height="40" patternunits="userSpaceOnUse">
+    <path d="M0 8 C60 5 120 12 180 8 S270 5 300 9 M0 22 C70 25 130 18 200 23 S280 26 300 21 M0 33 C50 31 110 36 170 32 S260 30 300 34" stroke="#2a1a0e" stroke-width="1.3" fill="none" opacity=".35"/>
+  </pattern>
+  <filter id="hoverGlow" x="-20%" y="-20%" width="140%" height="140%"><fedropshadow dx="0" dy="0" stddeviation="6" flood-color="#e6c97f" flood-opacity=".55"/></filter>
+  <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><fegaussianblur stddeviation="8"/></filter>
+  <filter id="soft2" x="-30%" y="-30%" width="160%" height="160%"><fegaussianblur stddeviation="3"/></filter>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><fedropshadow dx="0" dy="8" stddeviation="8" flood-color="#000" flood-opacity=".55"/></filter>
+  <filter id="carve" x="-10%" y="-10%" width="120%" height="120%"><fedropshadow dx="-1.5" dy="-1.5" stddeviation=".6" flood-color="#000" flood-opacity=".7"/><fedropshadow dx="1.5" dy="1.5" stddeviation=".6" flood-color="#d9b07a" flood-opacity=".35"/></filter>
+</defs>
+</svg>
+
+<div id="app">
+  <header id="hud">
+    <h1>Station Nightjar</h1>
+    <span class="spacer"></span>
+    <span id="timer" title="Time elapsed">00:00</span>
+    <button class="hbtn" id="bHint">Hints <span class="n" id="hintN">0</span></button>
+    <button class="hbtn" id="bJournal">Journal</button>
+    <button class="hbtn" id="bSound" aria-pressed="true">Sound on</button>
+    <button class="hbtn" id="bMenu">Menu</button>
+  </header>
+  <main id="stage-wrap">
+    <div id="stage">
+      <div class="layer" id="L0"></div>
+      <div class="layer hidden" id="L1"></div>
+      <canvas id="grain"></canvas>
+      <div id="vignette"></div>
+      <div id="flash"></div>
+      <button id="back">&#8592; Step back</button>
+      <div id="caption"></div>
+      <div id="toast"></div>
+    </div>
+  </main>
+  <footer id="inv"><span class="lbl">Satchel</span><div id="slots" style="display:flex;gap:.5rem"></div><span id="invhelp">Click an item to select it, then click where to use it. Double-click to examine.</span></footer>
+</div>
+
+<div id="modal" role="dialog" aria-modal="true"><div id="mbox"><button id="mclose" aria-label="Close">&times;</button><div id="mcontent"></div></div></div>
+
+<div class="overlay on" id="intro">
+  <div class="ovin" style="position:relative">
+    <h2 class="t1">Station Nightjar</h2>
+    <div class="t2" style="color:#ff6a4a">West Germany, 03:42, the 26th of September 1983</div>
+    <p>You are a NATO signals analyst on the night shift at a listening post near the inner German border. Twelve minutes ago, a satellite reported a missile launch. It is almost certainly a sensor fault.</p>
+    <p>But the automated relay, Cascade, will confirm the report up the chain in ninety minutes unless the duty officer aborts it. The duty officer, Major Hal Kessler, collapsed at his desk and was carried out by medics. Then the power failed.</p>
+    <p>Kessler held the abort code. He never trusted it to one place.</p>
+    <div class="mbtns"><button class="mbtn" id="bBegin">Begin</button><button class="mbtn ghost" id="bContinue" style="display:none">Continue saved game</button></div>
+  </div>
+</div>
+<div class="overlay" id="win">
+  <div class="ovin">
+    <h2 class="t1">Abort accepted</h2>
+    <div class="t2">Cascade has stood down</div>
+    <p id="winText"></p>
+    <div id="winStats" style="margin-top:1.2rem"></div>
+    <div class="mbtns"><button class="mbtn" id="bAgain">Play again</button><button class="mbtn ghost" id="bStay">Stay in the bunker</button></div>
+  </div>
+</div>
+<div class="overlay" id="fail">
+  <div class="ovin">
+    <h2 class="t1" style="color:#ff5a3a">Confirmation sent</h2>
+    <div class="t2">The countdown reached zero</div>
+    <p>Cascade has relayed the launch report as confirmed. Somewhere, a duty officer much further up the chain now has minutes to decide whether to believe it.</p>
+    <p>Rewind fifteen minutes and try again? Your progress in the room is kept.</p>
+    <div class="mbtns"><button class="mbtn" id="bRewind">Rewind 15 minutes</button></div>
+  </div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s);
+const SAVE='station-nightjar-v1';
+const VW=1600, VH=900;
+
+/* ============================== STATE ============================== */
+const fresh=()=>({scene:'overview',t:0,hints:0,tier:{},inv:[],taken:{},f:{},journal:[],mistakes:0,origins:{},sel:null,fuse:[null,null,null,null,null],brk:false,rx:4,tb:2,spd:1,band:0,entry:'',pen:0,rew:0});
+let S=fresh();
+let saveT=null;
+function save(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ localStorage.setItem(SAVE,JSON.stringify(S)); }catch(e){} },150); }
+function load(){ try{ const r=localStorage.getItem(SAVE); if(r){ const o=JSON.parse(r); if(o&&o.t!==undefined) return Object.assign(fresh(),o); } }catch(e){} return null; }
+function wipe(){ try{ localStorage.removeItem(SAVE); }catch(e){} }
+
+/* ============================== AUDIO ============================== */
+const A={ctx:null,on:true};
+function audioInit(){
+  if(A.ctx) return;
+  try{ A.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  const c=A.ctx;
+  A.master=c.createGain(); A.master.gain.value=A.on?0.85:0; A.master.connect(c.destination);
+  const len=c.sampleRate*2, b=c.createBuffer(1,len,c.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  A.noise=b;
+  // rain bed
+  const r=c.createBufferSource(); r.buffer=b; r.loop=true;
+  const rf=c.createBiquadFilter(); rf.type='bandpass'; rf.frequency.value=2600; rf.Q.value=.35;
+  const rg=c.createGain(); rg.gain.value=.045; r.connect(rf).connect(rg).connect(A.master); r.start();
+  // wind with slow swell
+  const w=c.createBufferSource(); w.buffer=b; w.loop=true; w.playbackRate.value=.5;
+  const wf=c.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=380;
+  const wg=c.createGain(); wg.gain.value=.07;
+  const lfo=c.createOscillator(); lfo.frequency.value=.07; const lg=c.createGain(); lg.gain.value=.05; lfo.connect(lg).connect(wg.gain); lfo.start();
+  w.connect(wf).connect(wg).connect(A.master); w.start();
+  // morse tone
+  const o=c.createOscillator(); o.type='sine'; o.frequency.value=640;
+  const og=c.createGain(); og.gain.value=0; o.connect(og).connect(A.master); o.start();
+  A.toneG=og; A.toneO=o;
+}
+function nz({dur=.15,freq=1200,q=1,type='bandpass',gain=.4,attack=.004,delay=0}={}){
+  if(!A.ctx) return; const c=A.ctx, t=c.currentTime+delay;
+  const s=c.createBufferSource(); s.buffer=A.noise; s.playbackRate.value=.6+Math.random()*.8;
+  const f=c.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q;
+  const g=c.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(gain,t+attack); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(f).connect(g).connect(A.master); s.start(t,Math.random()); s.stop(t+dur+.05);
+}
+function tn(freq,dur,type='sine',gain=.15,slide,delay=0){
+  if(!A.ctx) return; const c=A.ctx, t=c.currentTime+delay;
+  const o=c.createOscillator(); o.type=type; o.frequency.setValueAtTime(freq,t); if(slide) o.frequency.exponentialRampToValueAtTime(slide,t+dur);
+  const g=c.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(gain,t+.008); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(A.master); o.start(t); o.stop(t+dur+.05);
+}
+const sfx={
+  click(){ nz({dur:.05,freq:3200,q:2,gain:.35}); tn(2200,.03,'square',.02); },
+  tick(){ nz({dur:.03,freq:4200,q:5,gain:.22}); },
+  clunk(){ nz({dur:.3,freq:260,q:1,type:'lowpass',gain:.8}); tn(95,.3,'sine',.35,48); },
+  slide(){ nz({dur:.55,freq:650,q:.8,gain:.28,attack:.09}); },
+  creak(){ tn(150,.9,'sawtooth',.045,85); nz({dur:.8,freq:420,q:4,gain:.14,attack:.15}); },
+  unlock(){ sfx.click(); nz({dur:.14,freq:2300,q:3,gain:.35,delay:.12}); tn(1320,.3,'triangle',.07,null,.12); },
+  rattle(){ for(let i=0;i<5;i++) nz({dur:.05,freq:1700+i*230,q:4,gain:.28,delay:i*.055}); },
+  buzz(){ tn(105,.32,'square',.06); },
+  pick(){ tn(660,.14,'triangle',.08,990); },
+  page(){ nz({dur:.32,freq:4200,q:.5,gain:.16,attack:.06}); },
+  match(){ nz({dur:.25,freq:3400,q:.3,gain:.4,attack:.005}); nz({dur:1.2,freq:700,q:.5,gain:.09,attack:.25,delay:.15}); },
+  thunder(){ nz({dur:3.6,freq:130,q:.4,type:'lowpass',gain:1,attack:.08}); nz({dur:1.4,freq:300,q:.6,type:'lowpass',gain:.5,attack:.02,delay:.2}); },
+  chime(){ [0,1].forEach(i=>{ tn(523,2.2,'sine',.12,null,i*.7); tn(1046,1.6,'sine',.04,null,i*.7); tn(1568,1.1,'sine',.02,null,i*.7); }); },
+  success(){ [523,659,784,1046].forEach((f,i)=>tn(f,1,'triangle',.09,null,i*.11)); },
+  whoosh(){ nz({dur:.55,freq:900,q:.6,gain:.13,attack:.2}); },
+  gears(){ for(let i=0;i<14;i++) nz({dur:.04,freq:2600+(i%3)*400,q:6,gain:.2,delay:i*.09}); sfx.clunk(); },
+  splash(){ nz({dur:.6,freq:1600,q:.4,gain:.15,attack:.02}); },
+  hum(on){ if(!A.ctx) return; },
+};
+function toneOn(f=640){ if(!A.ctx) return; A.toneO.frequency.setValueAtTime(f,A.ctx.currentTime); A.toneG.gain.setTargetAtTime(.16,A.ctx.currentTime,.004); }
+function toneOff(){ if(!A.ctx) return; A.toneG.gain.setTargetAtTime(0,A.ctx.currentTime,.004); }
+function setSound(on){ A.on=on; if(A.master) A.master.gain.setTargetAtTime(on?.85:0,A.ctx.currentTime,.05); $('#bSound').textContent=on?'Sound on':'Sound off'; $('#bSound').setAttribute('aria-pressed',on); }
+
+/* ============================== UI HELPERS ============================== */
+let toastT=null;
+function say(msg,ms=3400){ const t=$('#toast'); t.innerHTML=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),ms); }
+function cap(txt){ const c=$('#caption'); if(txt){ c.textContent=txt; c.classList.add('on'); } else c.classList.remove('on'); }
+function note(txt){ if(!S.journal.includes(txt)){ S.journal.push(txt); save(); const b=$('#bJournal'); b.style.borderColor='var(--amber)'; setTimeout(()=>b.style.borderColor='',2500); } }
+function fmtT(s){ s=Math.floor(s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'); }
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ============================== ITEMS ============================== */
+const ITEMS={};
+function give(id){
+  if(S.inv.includes(id)) return;
+  S.inv.push(id); S.taken[id]=true; sfx.pick(); renderInv(id); say(`Added to satchel: <b>${ITEMS[id].name}</b>`); save();
+}
+function renderInv(newId){
+  const box=$('#slots'); box.innerHTML='';
+  const n=Math.max(7,S.inv.length);
+  for(let i=0;i<n;i++){
+    const id=S.inv[i]; const b=document.createElement('button');
+    b.className='slot'+(id?'':' empty')+(id&&S.sel===id?' sel':'')+(id&&id===newId?' new':'');
+    if(id){ b.innerHTML=ITEMS[id].icon; b.title=ITEMS[id].name; b.setAttribute('aria-label',ITEMS[id].name);
+      b.onclick=()=>{ audioInit(); if(S.sel===id){ deselect(); examine(id); } else { S.sel=id; renderInv(); applySel(); say(`Holding the <b>${ITEMS[id].name}</b>. Click something to use it on, or click it again to examine.`,2800); } };
+      b.ondblclick=()=>{ deselect(); examine(id); };
+    } else { b.disabled=true; b.setAttribute('aria-hidden','true'); }
+    box.appendChild(b);
+  }
+}
+function deselect(){ S.sel=null; renderInv(); applySel(); }
+function applySel(){ document.querySelectorAll('.layer').forEach(l=>{ l.classList.toggle('selmode',!!S.sel); l.querySelectorAll('[data-use]').forEach(h=>h.classList.toggle('usable',!!S.sel && h.dataset.use.split(' ').includes(S.sel))); }); }
+
+/* ============================== MODAL ============================== */
+let onModalClose=null;
+function modal(title,html,mount,onClose){
+  $('#mcontent').innerHTML=(title?`<h2>${title}</h2>`:'')+html;
+  $('#modal').classList.add('on'); onModalClose=onClose||null;
+  if(mount) mount($('#mcontent'));
+  setTimeout(()=>$('#mclose').focus(),30);
+}
+function closeModal(){ $('#modal').classList.remove('on'); $('#mcontent').innerHTML=''; if(onModalClose){ const f=onModalClose; onModalClose=null; f(); } }
+$('#mclose').onclick=closeModal;
+$('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if($('#modal').classList.contains('on')) closeModal(); else if(S.sel) deselect(); else if(scenes[S.scene]&&scenes[S.scene].parent) goBack(); } });
+
+/* ============================== SCENE ENGINE ============================== */
+const scenes={};
+let cur='L0', busy=false;
+const L=id=>document.getElementById(id);
+function chain(id){ const a=[]; let s=id; while(s){ a.push(s); s=scenes[s]&&scenes[s].parent; } return a; }
+function mount(el,id){
+  const sc=scenes[id];
+  el.innerHTML=`<svg viewBox="0 0 ${VW} ${VH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(sc.title)}">${sc.render()}</svg>`;
+  el.dataset.scene=id;
+  el.querySelectorAll('[data-go],[data-act]').forEach(h=>{ h.classList.add('hot'); h.setAttribute('tabindex','0'); h.setAttribute('role','button'); if(h.dataset.cap) h.setAttribute('aria-label',h.dataset.cap);
+    if(!h.querySelector('.hl')){ try{ const bb=h.getBBox(); const r=document.createElementNS('http://www.w3.org/2000/svg','rect'); r.setAttribute('class','hl'); r.setAttribute('x',bb.x-6); r.setAttribute('y',bb.y-6); r.setAttribute('width',bb.width+12); r.setAttribute('height',bb.height+12); r.setAttribute('rx',8); h.appendChild(r);}catch(e){} } });
+  if(sc.mount) sc.mount(el);
+  if(sc.update) sc.update(el);
+  updateShips(el); applySel();
+}
+function stageOriginOf(h,el){
+  try{ const bb=h.getBBox(); const svg=el.querySelector('svg'); return {x:(bb.x+bb.width/2)/VW*100,y:(bb.y+bb.height/2)/VH*100}; }catch(e){ return {x:50,y:50}; }
+}
+function go(id,origin){
+  if(busy||id===S.scene||!scenes[id]) return;
+  busy=true; cap(null);
+  const fromId=S.scene, from=L(cur), nextL=cur==='L0'?'L1':'L0', to=L(nextL);
+  const deeper=!chain(fromId).includes(id);
+  if(scenes[fromId].leave) scenes[fromId].leave();
+  if(deeper){ S.origins[id]=origin||S.origins[id]||{x:50,y:50}; }
+  const o=deeper?S.origins[id]:(S.origins[fromId]||{x:50,y:50});
+  S.scene=id; save();
+  mount(to,id); to.classList.remove('hidden');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const D=reduce?250:700;
+  sfx.whoosh();
+  let a1,a2;
+  if(deeper){
+    from.style.transformOrigin=`${o.x}% ${o.y}%`;
+    a1=from.animate([{transform:'scale(1)',opacity:1},{transform:reduce?'scale(1)':'scale(2.6)',opacity:0}],{duration:D,easing:'cubic-bezier(.55,0,.8,.3)',fill:'forwards'});
+    to.style.transformOrigin=`${o.x}% ${o.y}%`;
+    a2=to.animate([{transform:reduce?'scale(1)':'scale(.55)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:D,delay:D*.38,easing:'cubic-bezier(.2,.7,.2,1)',fill:'backwards'});
+  } else {
+    from.style.transformOrigin=`${o.x}% ${o.y}%`;
+    a1=from.animate([{transform:'scale(1)',opacity:1},{transform:reduce?'scale(1)':'scale(.5)',opacity:0}],{duration:D*.8,easing:'cubic-bezier(.5,0,.8,.4)',fill:'forwards'});
+    to.style.transformOrigin=`${o.x}% ${o.y}%`;
+    a2=to.animate([{transform:reduce?'scale(1)':'scale(2.4)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:D,delay:D*.2,easing:'cubic-bezier(.2,.7,.2,1)',fill:'backwards'});
+  }
+  to.style.zIndex=2; from.style.zIndex=1;
+  let done=false;
+  const finish=()=>{ if(done) return; done=true; try{a1.cancel();}catch(e){} from.classList.add('hidden'); from.innerHTML=''; from.style.zIndex=''; cur=nextL; busy=false; $('#back').style.display=scenes[id].parent?'block':'none'; if(scenes[id].enter) scenes[id].enter(to); };
+  a2.onfinish=finish; setTimeout(finish,D*1.4+120);
+}
+function goBack(){ const p=scenes[S.scene].parent; if(p) go(p); }
+$('#back').onclick=()=>{ audioInit(); goBack(); };
+function curEl(){ return L(cur); }
+function refresh(){ const sc=scenes[S.scene]; if(sc&&sc.update) sc.update(curEl()); applySel(); save(); }
+
+// delegated interaction
+['L0','L1'].forEach(lid=>{
+  const el=L(lid);
+  el.addEventListener('click',e=>{
+    audioInit();
+    if(busy||el.dataset.scene!==S.scene) return;
+    const h=e.target.closest('[data-go],[data-act]'); if(!h) return;
+    const sc=scenes[S.scene];
+    if(h.dataset.drag==='1' && el._dragged){ el._dragged=false; return; }
+    if(S.sel){
+      const uses=(h.dataset.use||'').split(' ');
+      if(uses.includes(S.sel)){ const it=S.sel; deselect(); sc.use(it,h.dataset.act||h.dataset.go,h,el); return; }
+      if(h.dataset.act){ say(`The ${ITEMS[S.sel].name.toLowerCase()} is no use there.`); deselect(); return; }
+    }
+    if(h.dataset.go){ if(h.dataset.lock && !sc.canGo(h.dataset.go,h)) return; go(h.dataset.go,stageOriginOf(h,el)); return; }
+    if(h.dataset.act && sc.act) sc.act(h.dataset.act,h,el,e);
+  });
+  el.addEventListener('keydown',e=>{ if(S.scene==='console'&&e.key==='Enter') return; if((e.key==='Enter'||e.key===' ') && e.target.closest('[data-go],[data-act]')){ e.preventDefault(); e.target.closest('[data-go],[data-act]').dispatchEvent(new MouseEvent('click',{bubbles:true})); } });
+  el.addEventListener('mouseover',e=>{ const h=e.target.closest('[data-cap]'); if(h&&!busy) cap(h.dataset.cap); });
+  el.addEventListener('mouseout',e=>{ const h=e.target.closest('[data-cap]'); if(h&&!h.contains(e.relatedTarget)) cap(null); });
+});
+
+/* ============================== SHARED ART ============================== */
+function rainDrops(x,y,w,h,n,op=.45){
+  let s=`<g opacity="${op}" stroke="#a9c6d6" stroke-width="1.4" stroke-linecap="round">`;
+  for(let i=0;i<n;i++){ const px=x+Math.random()*(w+40), py=y+Math.random()*h*.8, l=rnd(10,22);
+    s+=`<line class="drop" x1="${px.toFixed(0)}" y1="${py.toFixed(0)}" x2="${(px-3).toFixed(0)}" y2="${(py+l).toFixed(0)}" style="animation-delay:${(-Math.random()).toFixed(2)}s;animation-duration:${rnd(.45,.7).toFixed(2)}s"/>`; }
+  return s+'</g>';
+}
+function shipG(){
+  return `<g class="ship-inner">
+    <path d="M-60 0 L60 0 L48 14 L-50 14Z" fill="#05090c"/>
+    <path d="M-20 0 V-70 M18 0 V-60" stroke="#05090c" stroke-width="3"/>
+    <path d="M-34 -6 H30 V-16 H-34Z" fill="#070c10"/>
+    <circle cx="-20" cy="-72" r="16" fill="url(#gLampGlow)" class="pulse"/><circle cx="-20" cy="-72" r="2.6" fill="#fff6dc"/>
+    <circle cx="-40" cy="-6" r="12" fill="#ff5a3c" opacity=".25"/><circle cx="-40" cy="-6" r="2.4" fill="#ff7a5c"/>
+    <circle cx="40" cy="-6" r="2" fill="#7dff9a" opacity=".55"/>
+    <rect x="-10" y="-12" width="5" height="3" fill="#ffd27a" opacity=".7"/><rect x="2" y="-12" width="5" height="3" fill="#ffd27a" opacity=".5"/>
+  </g>`;
+}
+function beamWedges(cx,cy,len,spread){
+  const d=`M${cx} ${cy} L${cx+len} ${cy-spread} L${cx+len} ${cy+spread}Z`;
+  return `<path class="sweep" d="${d}" fill="url(#gBeam)"/><path class="sweep" style="animation-delay:-3s" d="${d}" fill="url(#gBeam)" transform="translate(${2*cx} 0) scale(-1 1)"/>`;
+}
+// Sea view inside an arbitrary clip shape. box = sea area; hz = horizon y
+function seaView(id,x,y,w,h,clipD,opts={}){
+  const hz=y+h*(opts.hz||.55);
+  let clouds=''; for(let i=0;i<7;i++){ clouds+=`<ellipse cx="${x+rnd(0,w)}" cy="${y+rnd(0,(hz-y)*.7)}" rx="${rnd(w*.12,w*.3)}" ry="${rnd(18,46)}" fill="#33495a" opacity="${rnd(.25,.5).toFixed(2)}" filter="url(#soft)"/>`; }
+  let waves=''; for(let i=0;i<9;i++){ const yy=hz+ (y+h-hz)*(i/9)+6; waves+=`<path class="wave" style="animation-delay:${-i*.7}s;animation-duration:${4+i%3}s" d="M${x-60} ${yy} q ${w/16} -${4+i} ${w/8} 0 t ${w/8} 0 t ${w/8} 0 t ${w/8} 0 t ${w/8} 0 t ${w/8} 0 t ${w/8} 0 t ${w/8} 0 t ${w/8} 0" stroke="#5f8796" stroke-width="${1+i*.25}" fill="none" opacity="${.15+i*.04}"/>`; }
+  const rx=x+w*.18, ry=hz+(y+h-hz)*.45;
+  const rocks=`<g><path d="M${rx-w*.14} ${ry+30} L${rx-w*.09} ${ry-12} L${rx-w*.05} ${ry+4} L${rx} ${ry-26} L${rx+w*.05} ${ry} L${rx+w*.1} ${ry-8} L${rx+w*.16} ${ry+30}Z" fill="#05090b"/>
+    <ellipse cx="${rx}" cy="${ry+24}" rx="${w*.17}" ry="9" fill="#d9eef5" opacity=".35" class="pulse" filter="url(#soft2)"/>
+    <ellipse cx="${rx+w*.06}" cy="${ry+10}" rx="${w*.05}" ry="5" fill="#e6f5fa" opacity=".4" class="pulse" style="animation-delay:-.8s" filter="url(#soft2)"/></g>`;
+  const beam=(S.f.beam&&!opts.noBeam)?`<g opacity=".4" pointer-events="none">${beamWedges(x+w*.5,hz-h*.18,w*.9,h*.12)}</g>`:'';
+  return `<clipPath id="cp-${id}"><path d="${clipD}"/></clipPath>
+  <g clip-path="url(#cp-${id})">
+    <rect x="${x}" y="${y}" width="${w}" height="${hz-y+2}" fill="url(#gSky)"/>
+    ${clouds}
+    <rect x="${x}" y="${hz}" width="${w}" height="${y+h-hz}" fill="url(#gSea)"/>
+    ${waves}
+    <g class="ship" data-box="${x},${hz},${w},${y+h-hz}" data-s="${opts.ss||1}">${shipG()}</g>
+    ${rocks}
+    ${beam}
+    ${rainDrops(x,y,w,h,opts.drops||Math.round(w*h/9000))}
+    <rect class="winflash" x="${x}" y="${y}" width="${w}" height="${h}" fill="#dfeeff" opacity="0"/>
+  </g>`;
+}
+function shipP(){ return Math.min(1,S.t/(75*60)); }
+function updateShips(root){
+  (root||document).querySelectorAll('.ship').forEach(g=>{
+    const [x,hz,w,h]=g.dataset.box.split(',').map(Number), ss=+g.dataset.s;
+    let p=shipP(), X, Y, sc;
+    if(S.f.won){ X=x+w*1.05; Y=hz+h*.08; sc=.35*ss; g.style.transition='transform 6s ease-in'; }
+    else { X=x+w*(.92-.6*p); Y=hz+h*(.06+.3*p); sc=(.32+.75*p)*ss*(w/1000); }
+    if(!S.f.won) sc=Math.max(sc,.12);
+    g.setAttribute('transform',`translate(${X.toFixed(1)} ${Y.toFixed(1)}) scale(${sc.toFixed(3)})`);
+  });
+}
+function lightning(){
+  const el=curEl(); const f=$('#flash');
+  f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  el.querySelectorAll('.winflash').forEach(r=>{ r.animate([{opacity:0},{opacity:.6},{opacity:.05},{opacity:.45},{opacity:0}],{duration:900,easing:'ease-out'}); });
+  setTimeout(()=>sfx.thunder(),rnd(500,1800));
+}
+function scheduleLightning(){ setTimeout(()=>{ if(S.started && !document.hidden) lightning(); scheduleLightning(); },rnd(14000,32000)); }
+
+// brass screw
+const screw=(x,y,r=6)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="url(#gBrassR)" stroke="#4a3510" stroke-width="1"/><line x1="${x-r*.6}" y1="${y}" x2="${x+r*.6}" y2="${y}" stroke="#4a3510" stroke-width="1.4"/>`;
+
+
+/* ============================== ROOM 2 DEFS ============================== */
+document.querySelector('svg defs').insertAdjacentHTML('beforeend',`
+  <linearGradient id="gConc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a5048"/><stop offset="1" stop-color="#363b35"/></linearGradient>
+  <linearGradient id="gSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7d8679"/><stop offset="1" stop-color="#4e5650"/></linearGradient>
+  <linearGradient id="gSteelD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a524c"/><stop offset="1" stop-color="#2b302c"/></linearGradient>
+  <linearGradient id="gOlive" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b6f45"/><stop offset="1" stop-color="#454829"/></linearGradient>
+  <linearGradient id="gCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9d3bb"/><stop offset="1" stop-color="#b3ad95"/></linearGradient>
+  <radialGradient id="gCRT" cx=".5" cy=".5" r=".7"><stop offset="0" stop-color="#0d2a17"/><stop offset="1" stop-color="#030a05"/></radialGradient>
+  <radialGradient id="gRedGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff3a20" stop-opacity=".7"/><stop offset="1" stop-color="#ff3a20" stop-opacity="0"/></radialGradient>
+  <radialGradient id="gTube" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#e8f4ff" stop-opacity=".5"/><stop offset="1" stop-color="#e8f4ff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="gKnob" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#5a5f5a"/><stop offset=".6" stop-color="#2a2d2a"/><stop offset="1" stop-color="#111"/></radialGradient>
+  <pattern id="pForm" width="240" height="120" patternUnits="userSpaceOnUse"><path d="M0 0H240M0 60H240" stroke="#2a2e29" stroke-width="2" opacity=".6"/><circle cx="40" cy="30" r="3" fill="#2a2e29" opacity=".6"/><circle cx="200" cy="30" r="3" fill="#2a2e29" opacity=".6"/><circle cx="120" cy="90" r="3" fill="#2a2e29" opacity=".6"/></pattern>
+  <pattern id="pGrille" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="3.2" fill="#0d0f0d"/></pattern>
+  <pattern id="pGrat" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M56 0V56H0" fill="none" stroke="#2f7a45" stroke-width="1" opacity=".55"/></pattern>
+  <filter id="glowG" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`);
+
+/* ============================== ITEMS ============================== */
+const IC=(inner)=>`<svg viewBox="0 0 60 60">${inner}</svg>`;
+Object.assign(ITEMS,{
+  manual:{name:'Technical manual',icon:IC(`<rect x="12" y="8" width="36" height="46" rx="2" fill="#4b5320" stroke="#262a10" stroke-width="2"/><rect x="18" y="16" width="24" height="10" fill="#d9d3bb"/><rect x="44" y="14" width="6" height="8" fill="#c0281f"/><rect x="44" y="26" width="6" height="8" fill="#2b55c0"/><rect x="44" y="38" width="6" height="8" fill="#e8c51a"/>`)},
+  abortcard:{name:'Abort card',icon:IC(`<rect x="8" y="14" width="44" height="32" fill="#e6e1cf" stroke="#c0281f" stroke-width="3"/>${[0,1,2,3].map(i=>`<rect x="${12+i*10}" y="30" width="8" height="8" fill="none" stroke="#333"/>`).join('')}<rect x="12" y="19" width="30" height="5" fill="#c0281f"/>`)},
+  trace:{name:'Scope trace printout',icon:IC(`<rect x="8" y="12" width="44" height="36" fill="#e6e1cf" stroke="#777" stroke-width="2"/><path d="M12 30 q5 -12 10 0 t10 0 t10 0 t10 0" stroke="#1f6e3a" stroke-width="2.5" fill="none"/>`)},
+  key:{name:'Cascade key',icon:IC(`<circle cx="20" cy="22" r="10" fill="none" stroke="#c9a23a" stroke-width="5"/><path d="M28 28 L48 48 M40 40 l5 -5 M44 44 l5 -5" stroke="#c9a23a" stroke-width="5" stroke-linecap="round"/><path d="M10 6 Q20 0 30 6" stroke="#c0281f" stroke-width="3" fill="none"/>`)},
+  reel:{name:'Tape reel',icon:IC(`<circle cx="30" cy="30" r="24" fill="#2a2d2a" stroke="#888" stroke-width="2"/><circle cx="30" cy="30" r="17" fill="#5a3a1e"/><circle cx="30" cy="30" r="6" fill="#ccc"/>${[0,1,2].map(i=>`<circle cx="${30+11*Math.cos(i*2.1)}" cy="${30+11*Math.sin(i*2.1)}" r="4" fill="#111"/>`).join('')}`)},
+  cardA:{name:'Punch card',icon:IC(`<path d="M8 16 H50 V46 H14 L8 40Z" fill="#e9dcae" stroke="#9a8a5a" stroke-width="2"/>${Array.from({length:12},(_,i)=>`<rect x="${14+(i%6)*6}" y="${22+Math.floor(i/6)*10+(i%2)*4}" width="3" height="5" fill="#333"/>`).join('')}`)},
+  hexdump:{name:'Hex printout',icon:IC(`<rect x="10" y="8" width="40" height="46" fill="#eef0e6"/>${[0,1,2,3,4,5].map(i=>`<rect x="10" y="${10+i*8}" width="40" height="4" fill="#cfe6d2"/><rect x="14" y="${12+i*8}" width="${20+(i*7)%14}" height="2" fill="#333"/>`).join('')}`)},
+  intercept:{name:'Intercept printout',icon:IC(`<rect x="10" y="8" width="40" height="46" fill="#eef0e6"/><rect x="14" y="14" width="30" height="3" fill="#c0281f"/>${[0,1,2,3].map(i=>`<rect x="14" y="${24+i*7}" width="${30-(i*5)%12}" height="2.5" fill="#333"/>`).join('')}`)},
+  pad:{name:'One-time pad',icon:IC(`<rect x="14" y="8" width="32" height="44" fill="#c0281f" stroke="#5a1410" stroke-width="2"/><rect x="18" y="14" width="24" height="16" fill="#efe9d5"/><text x="30" y="26" text-anchor="middle" font-size="9" font-family="monospace" fill="#222">PAD</text>`)},
+  codebook:{name:'Key list',icon:IC(`<rect x="12" y="8" width="36" height="46" fill="#2b3a55" stroke="#141c2c" stroke-width="2"/><rect x="18" y="16" width="24" height="5" fill="#d9d3bb"/><rect x="18" y="26" width="24" height="2" fill="#d9d3bb" opacity=".6"/><rect x="18" y="31" width="24" height="2" fill="#d9d3bb" opacity=".6"/><circle cx="30" cy="44" r="5" fill="#c0281f"/>`)},
+});
+
+/* ============================== DATA ============================== */
+const ABORT='7QFLUX9KZM4T';
+const RCOL={0:'#111',1:'#6b3a1e',2:'#c0281f',3:'#e07020',4:'#e8c51a',5:'#2e8b3a',6:'#2b55c0',7:'#7b3fb5',8:'#8a8a8a',9:'#eeeeee',g:'#c9a23a'};
+const RES={r470:[4,7,1],r2k2:[2,2,2],r10k:[1,0,3],r68k:[6,8,3],r1m:[1,0,5],r47k:[4,7,3],r220:[2,2,1]};
+const SLOTS=[{c:'light',n:'Lighting',v:'470 Ω',ok:'r470'},{c:'rx',n:'Receiver',v:'2.2 kΩ',ok:'r2k2'},{c:'scope',n:'Oscilloscope',v:'10 kΩ',ok:'r10k'},{c:'tape',n:'Tape and analyser',v:'68 kΩ',ok:'r68k'},{c:'crypto',n:'Cipher and card room',v:'1 MΩ',ok:'r1m'}];
+const TRAY=['r47k','r10k','r470','r1m','r220','r68k','r2k2'];
+const pw=c=>!!(S.brk && S.fuse && S.fuse[SLOTS.findIndex(s=>s.c===c)]===SLOTS.find(s=>s.c===c).ok);
+const STATION_F=6.25, PADPAGE=29, PADDIGITS='77126003324106254837', TX='79278 41846 46333 24451';
+const ROT={I:['EKMFLGDQVZNTOWYHXUSPAIBRCJ','Q'],II:['AJDKSIRUXBLHWTMCQGZNPYFVOE','E'],III:['BDFHJLCPRTXVZNYEIWGAKMUSQO','V'],IV:['ESOVPZJAYQUIRHXLNFTGKDCMWB','J'],V:['VZBRGITYUPSDNHLXAWMJQOFECK','Z']};
+const UKW='YRUHQSLDPXNGOKMIEBFZCWVJAT';
+const ROMANS=['I','II','III','IV','V'];
+const LOGIC_ROWS=[[0,0,1,1,0],[1,0,0,0,1],[0,0,0,0,0],[1,1,0,1,0],[0,1,1,1,0],[0,1,1,0,1],[1,0,1,1,0]];
+const GATES=['AND','OR','XOR','NAND','NOR'];
+const GF={AND:(a,b)=>a&b,OR:(a,b)=>a|b,XOR:(a,b)=>a^b,NAND:(a,b)=>1-(a&b),NOR:(a,b)=>1-(a|b)};
+const CARD_TXT='BOX4 M4T';
+
+/* ---------- extra audio ---------- */
+const A2={};
+function loopNoise(key,freq,q,type='bandpass'){ if(!A.ctx) return null; if(A2[key]) return A2[key]; const c=A.ctx; const s=c.createBufferSource(); s.buffer=A.noise; s.loop=true; const f=c.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q; const g=c.createGain(); g.gain.value=0; s.connect(f).connect(g).connect(A.master); s.start(); A2[key]={g,f,s}; return A2[key]; }
+function setLoop(key,v,freq){ const n=A2[key]; if(!n||!A.ctx) return; n.g.gain.setTargetAtTime(v,A.ctx.currentTime,.08); if(freq) n.f.frequency.setTargetAtTime(freq,A.ctx.currentTime,.1); }
+function hum(on){ if(!A.ctx) return; if(!A2.hum){ const c=A.ctx,o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain(); o.frequency.value=100; o2.frequency.value=200; o2.type='triangle'; g.gain.value=0; o.connect(g); o2.connect(g); g.connect(A.master); o.start(); o2.start(); A2.hum={g}; } A2.hum.g.gain.setTargetAtTime(on?.012:0,A.ctx.currentTime,.3); }
+Object.assign(sfx,{
+  spark(){ nz({dur:.35,freq:5000,q:.4,gain:.5,attack:.002}); nz({dur:.12,freq:900,q:2,gain:.4,delay:.05}); },
+  breaker(){ nz({dur:.4,freq:180,q:1,type:'lowpass',gain:.9}); tn(70,.4,'square',.12,40); },
+  key(){ nz({dur:.06,freq:1800,q:3,gain:.35}); tn(300,.05,'square',.04); },
+  beep(){ tn(1200,.12,'square',.06); },
+  alarm(){ tn(440,.5,'sawtooth',.05,880); tn(880,.5,'sawtooth',.05,440,.5); },
+  tubeon(){ for(let i=0;i<5;i++) nz({dur:.05,freq:3000,q:6,gain:.2,delay:i*.12+Math.random()*.05}); },
+  printer(){ for(let i=0;i<10;i++) nz({dur:.03,freq:2600,q:8,gain:.2,delay:i*.06}); },
+  chimeNS(){ [784,659,523,659,784].forEach((f,i)=>tn(f,.5,'triangle',.07,null,i*.28)); },
+  bolt(){ nz({dur:.3,freq:400,q:2,gain:.6}); tn(160,.3,'square',.06,80); },
+});
+const segFmt=s=>{ s=Math.max(0,Math.floor(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); };
+const remain=()=>5400+(S.rew||0)*900-S.t-(S.pen||0);
+function resistor(x,y,id,vert=false,sc=1){
+  const b=RES[id]; const bands=[RCOL[b[0]],RCOL[b[1]],RCOL[b[2]],RCOL.g];
+  return `<g transform="translate(${x} ${y}) rotate(${vert?90:0}) scale(${sc})"><line x1="-70" y1="0" x2="70" y2="0" stroke="#bfc4c0" stroke-width="3"/><rect x="-40" y="-14" width="80" height="28" rx="12" fill="#d8c69a" stroke="#8a7a50" stroke-width="1.5"/>${bands.map((c,i)=>`<rect x="${-30+i*14+(i===3?8:0)}" y="-14" width="8" height="28" fill="${c}"/>`).join('')}<rect x="-38" y="-12" width="76" height="6" rx="3" fill="#fff" opacity=".25"/></g>`;
+}
+function gateShape(t){
+  const and='M-40 -32 H0 A32 32 0 0 1 0 32 H-40Z', or='M-46 -32 Q-22 0 -46 32 Q10 32 42 0 Q10 -32 -46 -32Z';
+  if(t==='AND') return `<path d="${and}"/>`;
+  if(t==='OR') return `<path d="${or}"/>`;
+  if(t==='XOR') return `<path d="${or}"/><path d="M-56 -32 Q-32 0 -56 32" fill="none"/>`;
+  if(t==='NAND') return `<path d="${and}"/><circle cx="40" cy="0" r="7"/>`;
+  return `<path d="${or}"/><circle cx="50" cy="0" r="7"/>`;
+}
+function ledText(x,y,txt,size,col='#ff2a1a',id=''){ return `<text ${id?`id="${id}"`:''} x="${x}" y="${y}" text-anchor="middle" font-family="Courier Prime, monospace" font-weight="700" font-size="${size}" fill="${col}" letter-spacing="${size*.08}" filter="url(#glowG)">${txt}</text>`; }
+
+/* ============================== OVERVIEW ============================== */
+scenes.overview={ title:'Station Nightjar, operations room', parent:null,
+render(){
+  const tiles=[]; for(let xb=-1200;xb<=2800;xb+=130){ tiles.push(`<line x1="${800+(xb-800)*.45}" y1="700" x2="${xb}" y2="900"/>`); }
+  return `
+  <g data-depth=".25">
+    <rect width="1600" height="710" fill="url(#gConc)"/><rect width="1600" height="710" fill="url(#pForm)"/>
+    <rect width="1600" height="64" fill="#262a25"/>
+    <rect x="0" y="70" width="1600" height="16" fill="url(#gSteel)"/><rect x="0" y="96" width="1600" height="10" fill="#6d4a2a"/>
+    ${[300,800,1300].map(x=>`<g><rect x="${x-120}" y="36" width="240" height="22" rx="4" fill="#9aa39a"/><rect class="tube" x="${x-112}" y="56" width="224" height="8" rx="4" fill="#3a3f3a"/><ellipse class="tubeglow" cx="${x}" cy="70" rx="380" ry="200" fill="url(#gTube)" opacity="0"/></g>`).join('')}
+    <g id="ovBeacon"><rect x="784" y="108" width="32" height="20" fill="#333"/><circle cx="800" cy="128" r="16" fill="#a0180c"/><circle cx="800" cy="128" r="120" fill="url(#gRedGlow)" class="pulse"/></g>
+    <text x="800" y="340" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="30" fill="#2c312b" opacity=".8">NIGHTJAR / SIGINT 4</text>
+    <!-- fuse panel -->
+    <g data-go="fuse" data-cap="The main fuse panel"><rect x="50" y="170" width="160" height="250" rx="4" fill="url(#gSteel)" stroke="#262a25" stroke-width="3"/><rect x="66" y="190" width="128" height="40" fill="#e8c51a"/><path d="M130 196 l-12 26 h10 l-6 18 l18 -26 h-10 l6 -18z" fill="#111"/><rect x="66" y="250" width="128" height="150" fill="none" stroke="#3a3f3a" stroke-width="2"/><circle cx="180" cy="300" r="7" fill="#262a25"/></g><rect x="118" y="420" width="24" height="290" fill="#3a3f3a"/>
+    <!-- countdown on wall -->
+    <g data-go="console" data-cap="The Cascade relay console">
+      <rect x="660" y="150" width="280" height="110" rx="6" fill="#111" stroke="#5a5f5a" stroke-width="4"/>
+      ${ledText(800,226,'90:00',64,'#ff2a1a','ovCD')}
+      <text x="800" y="282" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="15" fill="#c9c3a9" letter-spacing="2">CASCADE RELAY</text>
+    </g>
+    <!-- rack -->
+    <rect x="1010" y="130" width="190" height="640" fill="#222622" stroke="#111" stroke-width="3"/>
+    <g data-go="receiver" data-cap="The shortwave receiver">
+      <rect x="1020" y="170" width="170" height="120" fill="url(#gOlive)" stroke="#262a10" stroke-width="2"/><rect x="1032" y="184" width="96" height="36" fill="#140805"/>${ledText(1080,212,'',26,'#ff8a2a','ovRx')}<circle cx="1160" cy="246" r="24" fill="url(#gKnob)"/><rect x="1032" y="236" width="90" height="40" fill="url(#pGrille)"/>
+    </g>
+    <g data-go="scope" data-cap="The oscilloscope">
+      <rect x="1020" y="306" width="170" height="150" fill="url(#gCream)" stroke="#5a5a4a" stroke-width="2"/><rect x="1032" y="320" width="100" height="80" rx="8" fill="url(#gCRT)"/><path id="ovScope" d="" stroke="#5bff8a" stroke-width="2" fill="none"/>${[0,1,2].map(i=>`<circle cx="1160" cy="${336+i*36}" r="10" fill="url(#gKnob)"/>`).join('')}
+    </g>
+    <rect x="1020" y="472" width="170" height="70" fill="url(#gSteelD)"/><rect x="1020" y="556" width="170" height="200" fill="url(#gSteelD)"/>${[0,1,2,3,4,5].map(i=>`<circle cx="${1040+i*28}" cy="506" r="5" fill="${i%2?'#2e8b3a':'#553'}"/>`).join('')}
+    <!-- tape deck -->
+    <g data-go="tape" data-cap="The tape deck and spectrum analyser">
+      <rect x="1215" y="240" width="180" height="530" fill="url(#gSteel)" stroke="#262a25" stroke-width="3"/>
+      <circle cx="1262" cy="300" r="38" fill="#1b1d1b" stroke="#888" stroke-width="2"/><circle cx="1348" cy="300" r="38" fill="#1b1d1b" stroke="#888" stroke-width="2"/><circle cx="1262" cy="300" r="6" fill="#bbb"/><circle cx="1348" cy="300" r="6" fill="#bbb"/>
+      <rect x="1232" y="400" width="146" height="110" rx="6" fill="url(#gCRT)"/><g id="ovSpec"></g>
+    </g>
+    <!-- safe wall -->
+    <g data-go="safe" data-cap="A logic-locked wall safe">
+      <rect x="1410" y="160" width="170" height="150" fill="url(#gSteelD)" stroke="#111" stroke-width="2"/>${[0,1,2].map(i=>`<path d="M${1440} ${190+i*40} h40 a14 14 0 0 1 0 28 h-40z" fill="#5a5f5a"/>`).join('')}<circle id="ovY" cx="1540" cy="234" r="10" fill="#331"/>
+      <rect x="1410" y="350" width="170" height="270" rx="6" fill="url(#gSteel)" stroke="#262a25" stroke-width="4"/><circle cx="1495" cy="485" r="44" fill="url(#gKnob)" stroke="#888" stroke-width="3"/><rect x="1440" y="560" width="110" height="18" fill="#2a2e29"/>
+    </g>
+  </g>
+  <g data-depth=".5">
+    <rect y="700" width="1600" height="200" fill="#3d4038"/><g stroke="#2a2c26" stroke-width="2.4">${tiles.join('')}<line x1="0" y1="740" x2="1600" y2="740"/><line x1="0" y1="800" x2="1600" y2="800"/><line x1="0" y1="880" x2="1600" y2="880"/></g>
+  </g>
+  <g data-depth="1">
+    <!-- card station -->
+    <g data-go="cards" data-cap="The card reader and line printer">
+      <rect x="30" y="470" width="200" height="330" fill="url(#gCream)" stroke="#5a5a4a" stroke-width="3"/><rect x="50" y="490" width="160" height="40" fill="#2a2e29"/><rect x="70" y="480" width="80" height="22" fill="#e9dcae"/>
+      ${[0,1,2,3,4,5,6,7].map(i=>`<circle class="ovCardL" cx="${58+i*20}" cy="560" r="6" fill="#331"/>`).join('')}
+      <rect x="50" y="600" width="160" height="170" fill="url(#gSteelD)"/><path d="M60 470 V430 H200 V470" fill="#eef0e6" stroke="#aaa"/>
+    </g>
+    <!-- desk -->
+    <g data-go="desk" data-cap="Major Kessler's desk">
+      <rect x="260" y="580" width="22" height="200" fill="#2a2e29"/><rect x="560" y="580" width="22" height="200" fill="#2a2e29"/>
+      <path d="M250 586 L594 586 L578 556 L266 556Z" fill="#7a7458"/><rect x="250" y="586" width="344" height="80" fill="url(#gSteel)"/><rect x="380" y="600" width="120" height="44" fill="none" stroke="#2a2e29" stroke-width="2"/><rect x="424" y="618" width="32" height="6" fill="#ccc"/>
+      <rect x="290" y="534" width="70" height="26" fill="#4b5320"/><rect x="400" y="540" width="60" height="16" fill="#e6e1cf" transform="rotate(-6 430 548)"/><rect x="500" y="536" width="44" height="22" rx="4" fill="#1b1b1b"/>
+      <path d="M520 536 V490 h20" stroke="#333" stroke-width="5" fill="none"/><path d="M530 480 l30 0 l-10 14 h-14z" fill="#4b5320"/>
+      <!-- chair + jacket -->
+      <path d="M420 620 h130 v140 h-130z" fill="#1d201d"/><path d="M430 640 q30 -40 65 -10 q35 -30 65 10 l-10 120 h-110z" fill="#4b5320" stroke="#2d3112" stroke-width="2"/><rect x="430" y="760" width="120" height="20" fill="#222"/><path d="M440 780 l-10 80 M540 780 l10 80" stroke="#222" stroke-width="8"/>
+    </g>
+    <!-- console desk -->
+    <g data-go="console" data-cap="The Cascade relay console">
+      <path d="M620 600 L990 600 L960 520 L650 520Z" fill="url(#gSteel)" stroke="#262a25" stroke-width="2"/><rect x="620" y="600" width="370" height="180" fill="url(#gSteelD)"/>
+      <rect x="700" y="534" width="210" height="28" fill="#0b1a10"/><text id="ovEntry" x="805" y="555" text-anchor="middle" font-family="Courier Prime, monospace" font-size="20" fill="#5bff8a">____________</text>
+      ${Array.from({length:18},(_,i)=>`<rect x="${700+(i%9)*24}" y="${566+Math.floor(i/9)*14}" width="18" height="10" rx="2" fill="#ccc6ae"/>`).join('')}
+      <circle cx="944" cy="560" r="14" fill="#c0281f"/><path d="M928 546 h32 v-8 h-32z" fill="#e8c51a" opacity=".7"/><circle cx="668" cy="560" r="10" fill="#888"/>
+    </g>
+    <!-- rotor machine on table -->
+    <g data-go="rotor" data-cap="The M-4 rotor cipher machine">
+      <path d="M1000 820 L1460 820 L1440 790 L1020 790Z" fill="#5a4a32"/><rect x="1000" y="820" width="460" height="80" fill="#3a2f20"/>
+      <rect x="1080" y="740" width="300" height="70" rx="6" fill="#2a2e29" stroke="#111" stroke-width="2"/><rect x="1180" y="750" width="100" height="22" fill="#111"/>${[0,1,2].map(i=>`<rect x="${1190+i*30}" y="752" width="20" height="18" fill="#ddd"/>`).join('')}
+      ${Array.from({length:16},(_,i)=>`<circle cx="${1100+(i%8)*36}" cy="${786+Math.floor(i/8)*12}" r="5" fill="#cfcfcf"/>`).join('')}
+    </g>
+  </g>
+  <rect id="ovDark" width="1600" height="900" fill="#2a0300" opacity=".62" style="mix-blend-mode:multiply" pointer-events="none"/>
+  <rect id="ovCool" width="1600" height="900" fill="#0a1a2a" opacity="0" pointer-events="none"/>`;
+},
+mount(el){
+  const svg=el.querySelector('svg'); const groups=[...el.querySelectorAll('[data-depth]')];
+  el.onmousemove=e=>{ const r=svg.getBoundingClientRect(); if(!r.width) return; const dx=(e.clientX-r.left)/r.width-.5, dy=(e.clientY-r.top)/r.height-.5; groups.forEach(g=>{ const d=+g.dataset.depth; g.setAttribute('transform',`translate(${(-dx*20*d).toFixed(1)} ${(-dy*10*d).toFixed(1)})`); }); };
+},
+update(el){
+  const L=pw('light');
+  el.querySelector('#ovDark').setAttribute('opacity',L?0:.62);
+  el.querySelector('#ovCool').setAttribute('opacity',L?.12:0);
+  el.querySelector('#ovBeacon').style.display=L?'none':'';
+  el.querySelectorAll('.tube').forEach(t=>t.setAttribute('fill',L?'#f2f8ff':'#3a3f3a'));
+  el.querySelectorAll('.tubeglow').forEach(t=>t.setAttribute('opacity',L?1:0));
+  el.querySelector('#ovRx').textContent=pw('rx')?S.rx.toFixed(3):'';
+  el.querySelector('#ovScope').setAttribute('d',pw('scope')?'M1036 360 q8 -18 16 0 t16 0 t16 0 t16 0 t16 0 t16 0':'');
+  el.querySelector('#ovY').setAttribute('fill',S.f.safe?'#ffb000':'#331');
+  el.querySelector('#ovEntry').textContent=(S.entry||'').padEnd(12,'_');
+  el.querySelector('#ovSpec').innerHTML=pw('tape')?`<path d="M1240 490 ${Array.from({length:14},(_,i)=>`L${1240+i*10} ${490-Math.random()*40}`).join(' ')}" stroke="#5bff8a" stroke-width="2" fill="none" opacity=".7"/>`:'';
+  el.querySelectorAll('.ovCardL').forEach((c,i)=>c.setAttribute('fill',pw('crypto')?(i%3?'#5a2':'#ffb000'):'#331'));
+}};
+
+/* ============================== FUSE PANEL ============================== */
+scenes.fuse={ title:'Main fuse panel', parent:'overview',
+render(){
+  const slots=SLOTS.map((s,i)=>{ const x=420+i*160; return `<g data-act="slot-${i}" data-cap="${s.n} circuit, ${s.v}">
+    <rect x="${x-62}" y="170" width="124" height="46" rx="3" fill="#e6e1cf" stroke="#333"/><text x="${x}" y="190" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="15" fill="#222">${s.n}</text><text x="${x}" y="209" text-anchor="middle" font-family="Courier Prime, monospace" font-weight="700" font-size="17" fill="#c0281f">${s.v}</text>
+    <rect x="${x-34}" y="232" width="68" height="300" rx="6" fill="#1b1d1b" stroke="#555" stroke-width="2"/><rect x="${x-14}" y="236" width="28" height="18" fill="url(#gBrassH)"/><rect x="${x-14}" y="510" width="28" height="18" fill="url(#gBrassH)"/>
+    <g id="fs${i}"></g>
+    <circle id="fl${i}" cx="${x}" cy="568" r="16" fill="#331" stroke="#111" stroke-width="3"/></g>`; }).join('');
+  const tray=TRAY.map((id,i)=>{ const x=420+i*112; return `<g data-act="tray-${id}" data-cap="A ceramic load resistor" id="tr-${id}"><rect x="${x-50}" y="680" width="100" height="120" rx="6" fill="#262a25" stroke="#111"/><g class="trR">${resistor(x,740,id,true,.62)}</g></g>`; }).join('');
+  return `<rect width="1600" height="900" fill="url(#gConc)"/><rect width="1600" height="900" fill="url(#pForm)"/>
+  <path d="M100 60 L300 90 L300 830 L100 870Z" fill="url(#gSteelD)" stroke="#111" stroke-width="3"/><rect x="130" y="140" width="140" height="80" fill="#e8c51a" transform="skewY(8)"/><text x="200" y="210" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="24" fill="#111" transform="skewY(8)">DANGER</text><text x="200" y="236" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="18" fill="#111" transform="skewY(8)">220 V</text>
+  <rect x="300" y="60" width="1240" height="800" rx="8" fill="url(#gSteel)" stroke="#262a25" stroke-width="5"/>
+  <text x="340" y="120" font-family="Allerta Stencil, Impact, sans-serif" font-size="30" fill="#262a25">Distribution board 4</text>
+  <text x="340" y="148" font-family="IBM Plex Sans Condensed, sans-serif" font-size="17" fill="#262a25">Each circuit takes one load resistor of the marked value. Breaker OFF before fitting.</text>
+  ${slots}
+  <rect x="356" y="660" width="800" height="160" rx="8" fill="#1b1d1b"/><text x="370" y="652" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#262a25">Spares tray</text>
+  ${tray}
+  <!-- breaker -->
+  <g data-act="breaker" data-cap="Main breaker"><rect x="1250" y="200" width="200" height="360" rx="8" fill="#2a2e29" stroke="#111" stroke-width="3"/><text x="1350" y="236" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="22" fill="#e6e1cf">MAIN</text><text x="1350" y="270" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#9c9">ON</text><text x="1350" y="534" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#c99">OFF</text>
+    <rect x="1330" y="290" width="40" height="220" rx="10" fill="#111"/><g id="brkLever" class="tr" style="transform-box:view-box"><rect x="1300" y="440" width="100" height="56" rx="8" fill="#c0281f" stroke="#5a1410" stroke-width="3"/></g></g>
+  <rect width="1600" height="900" fill="#2a0300" opacity="${pw('light')?0:.5}" style="mix-blend-mode:multiply" pointer-events="none"/>
+  <g id="fsSpark" pointer-events="none"></g>`;
+},
+update(el){
+  if(!S.fuse) S.fuse=[null,null,null,null,null];
+  SLOTS.forEach((s,i)=>{ const x=420+i*160; el.querySelector('#fs'+i).innerHTML=S.fuse[i]?resistor(x,382,S.fuse[i],true,1.05):''; const lamp=el.querySelector('#fl'+i); lamp.setAttribute('fill',S.brk&&S.fuse[i]===s.ok?'#3cff6a':'#331'); });
+  TRAY.forEach(id=>{ const g=el.querySelector('#tr-'+id); const inSlot=S.fuse.includes(id); g.querySelector('.trR').style.display=inSlot?'none':''; g.querySelector('rect').setAttribute('stroke',S.fh===id?'#ffb000':'#111'); g.querySelector('rect').setAttribute('stroke-width',S.fh===id?5:1); });
+  el.querySelector('#brkLever').style.transform=S.brk?'translateY(-150px)':'';
+},
+act(a,h,el){
+  if(a.startsWith('tray-')){ const id=a.slice(5); if(S.fuse.includes(id)) return; if(S.brk){ say('Switch the main breaker off before handling the resistors.'); sfx.buzz(); return; } S.fh=S.fh===id?null:id; sfx.click(); if(S.fh){ const b=RES[id]; say(`Picked up a resistor. Bands, left to right: ${['black','brown','red','orange','yellow','green','blue','violet','grey','white'][b[0]]}, ${['black','brown','red','orange','yellow','green','blue','violet','grey','white'][b[1]]}, ${['black','brown','red','orange','yellow','green','blue','violet','grey','white'][b[2]]}, gold.`,4200); } refresh(); return; }
+  if(a.startsWith('slot-')){ const i=+a.slice(5); if(S.brk){ say('Switch the main breaker off before touching the circuits.'); sfx.buzz(); return; }
+    if(S.fh){ S.fuse[i]=S.fh; S.fh=null; sfx.clunk(); } else if(S.fuse[i]){ S.fuse[i]=null; sfx.click(); } else { say(`${SLOTS[i].n}: this clip takes a ${SLOTS[i].v} resistor.`); }
+    refresh(); return; }
+  if(a==='breaker'){
+    if(S.brk){ S.brk=false; sfx.breaker(); hum(false); refresh(); say('Breaker off.'); return; }
+    S.brk=true; sfx.breaker(); refresh(); let bad=0;
+    SLOTS.forEach((s,i)=>{ if(S.fuse[i] && S.fuse[i]!==s.ok){ bad++; setTimeout(()=>{ sfx.spark(); const x=420+i*160; el.querySelector('#fsSpark').innerHTML+=`<g><circle cx="${x}" cy="382" r="80" fill="url(#gBeamDot)"><animate attributeName="opacity" from="1" to="0" dur=".6s" fill="freeze"/></circle></g>`; S.fuse[i]=null; refresh(); },300+i*200); } });
+    const good=SLOTS.filter((s,i)=>S.fuse[i]===s.ok).length+0;
+    setTimeout(()=>{ if(pw('light')){ sfx.tubeon(); hum(true); }
+      if(bad){ S.mistakes+=bad; say(`${bad} circuit${bad>1?'s':''} shorted and threw the resistor out. ${good} circuit${good===1?' is':'s are'} live.`,4200); }
+      else if(good===5){ say('All five circuits are live. Somewhere above you, fluorescent tubes stutter into life.'); note('Restored power to all five circuits on the fuse panel.'); sfx.success(); }
+      else say(`${good} of 5 circuits live.`);
+      save(); },500+SLOTS.length*200);
+  }
+}};
+/* ============================== DESK ============================== */
+scenes.desk={ title:"Major Kessler's desk", parent:'overview',
+render(){
+  return `<defs><clipPath id="dkClip"><rect x="0" y="500" width="1600" height="400"/></clipPath></defs>
+  <rect width="1600" height="380" fill="url(#gConc)"/><rect width="1600" height="380" fill="url(#pForm)"/>
+  <g data-act="cork" data-cap="A corkboard of memos"><rect x="860" y="40" width="520" height="260" fill="#9b7a4a" stroke="#4a3a20" stroke-width="8"/>
+    <rect x="890" y="70" width="150" height="110" fill="#efe9d5" transform="rotate(-3 965 125)"/><rect x="1070" y="64" width="140" height="160" fill="#f3e9a8" transform="rotate(2 1140 144)"/><rect x="1230" y="80" width="120" height="100" fill="#efe9d5" transform="rotate(4 1290 130)"/>
+    ${[0,1,2,3,4].map(i=>`<rect x="900" y="${92+i*14}" width="${120-i*12}" height="3" fill="#444" transform="rotate(-3 965 125)"/>`).join('')}<circle cx="965" cy="72" r="5" fill="#c0281f"/><circle cx="1140" cy="68" r="5" fill="#2b55c0"/><circle cx="1290" cy="84" r="5" fill="#c0281f"/></g>
+  <path d="M60 380 L1540 380 L1590 480 L10 480Z" fill="#7a7458"/><rect x="10" y="476" width="1580" height="12" fill="#4e4a36"/>
+  <rect x="10" y="488" width="1580" height="412" fill="url(#gSteel)"/>
+  <g data-act="take-manual" data-cap="A green technical manual" id="dkManual"><rect x="140" y="378" width="240" height="70" rx="4" fill="#4b5320" stroke="#262a10" stroke-width="3" transform="rotate(-3 260 413)"/><rect x="180" y="392" width="120" height="22" fill="#d9d3bb" transform="rotate(-3 260 413)"/><rect x="370" y="384" width="14" height="16" fill="#c0281f"/><rect x="370" y="404" width="14" height="16" fill="#2b55c0"/></g>
+  <g data-act="take-trace" data-cap="A clipboard with a scope printout" id="dkTrace"><rect x="440" y="370" width="200" height="90" fill="#7a5a32" transform="rotate(2 540 415)"/><rect x="452" y="380" width="176" height="74" fill="#eef0e6" transform="rotate(2 540 415)"/><path d="M462 418 q11 -22 22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0" stroke="#1f6e3a" stroke-width="2.5" fill="none" transform="rotate(2 540 415)"/><rect x="510" y="366" width="60" height="14" rx="3" fill="#bbb"/></g>
+  <g data-act="take-abortcard" data-cap="A red-bordered card" id="dkAbort"><rect x="700" y="400" width="150" height="62" fill="#e6e1cf" stroke="#c0281f" stroke-width="4" transform="rotate(-8 775 431)"/><rect x="712" y="410" width="80" height="8" fill="#c0281f" transform="rotate(-8 775 431)"/></g>
+  <g data-act="phone" data-cap="A field telephone"><rect x="960" y="380" width="170" height="80" rx="10" fill="#3a4028"/><path d="M970 384 q85 -50 150 0" stroke="#1b1d10" stroke-width="22" fill="none" stroke-linecap="round"/><circle cx="1045" cy="430" r="24" fill="#222"/></g>
+  <g data-act="mug" data-cap="A cold mug of coffee"><rect x="1220" y="380" width="60" height="70" rx="6" fill="#e6e1cf"/><path d="M1280 395 q24 0 24 18 q0 18 -24 18" stroke="#e6e1cf" stroke-width="8" fill="none"/><ellipse cx="1250" cy="384" rx="28" ry="6" fill="#2a1a0a"/></g>
+  <rect x="540" y="500" width="520" height="140" fill="#1b1d1b"/>
+  <g clip-path="url(#dkClip)"><g id="dkDrawer" class="tr" style="transform-box:view-box">
+    <rect x="550" y="370" width="500" height="130" fill="#2a2e29"/><rect x="560" y="376" width="480" height="120" fill="#151715"/>
+    <g data-act="take-reel" data-cap="A reel of magnetic tape" id="dkReel">${Array.from({length:1},()=>`<circle cx="720" cy="440" r="52" fill="#2a2d2a" stroke="#999" stroke-width="3"/><circle cx="720" cy="440" r="38" fill="#5a3a1e"/><circle cx="720" cy="440" r="10" fill="#ccc"/><rect x="680" y="476" width="80" height="18" fill="#e6e1cf"/><text x="720" y="490" text-anchor="middle" font-family="Courier Prime, monospace" font-size="12" fill="#222">KESSLER</text>`).join('')}</g>
+    <g data-act="drawer" data-cap="The desk drawer"><rect x="540" y="500" width="520" height="140" fill="url(#gSteel)" stroke="#262a25" stroke-width="4"/><rect x="740" y="556" width="120" height="22" rx="8" fill="#bbb" stroke="#555"/><rect x="760" y="520" width="80" height="22" fill="#e6e1cf"/><text x="800" y="536" text-anchor="middle" font-family="Courier Prime, monospace" font-size="14" fill="#222">KESSLER</text></g>
+  </g></g>
+  <!-- chair and jacket -->
+  <g data-act="jacket" data-cap="Kessler's uniform jacket on his chair">
+    <rect x="1180" y="520" width="300" height="300" rx="20" fill="#1d201d"/><path d="M1200 560 q60 -70 130 -20 q70 -50 130 20 l-20 260 h-220z" fill="#4b5320" stroke="#2d3112" stroke-width="3"/><path d="M1330 540 v280" stroke="#2d3112" stroke-width="3"/>${[600,660,720].map(y=>`<circle cx="1340" cy="${y}" r="6" fill="url(#gBrassR)"/>`).join('')}<rect x="1360" y="640" width="70" height="40" fill="#3d4419" stroke="#2d3112" stroke-width="2"/><rect x="1240" y="580" width="40" height="10" fill="#c0281f"/>
+  </g>
+  <rect width="1600" height="900" fill="#2a0300" opacity="${pw('light')?0:.5}" style="mix-blend-mode:multiply" pointer-events="none"/>`;
+},
+update(el){
+  el.querySelector('#dkDrawer').style.transform=S.f.drawer?'translateY(130px)':'';
+  ['manual','trace','abortcard','reel'].forEach(k=>{ const n=el.querySelector('#dk'+({manual:'Manual',trace:'Trace',abortcard:'Abort',reel:'Reel'})[k]); n.style.display=S.taken[k]?'none':''; });
+},
+act(a){
+  if(a==='drawer'){ S.f.drawer=!S.f.drawer; sfx.slide(); refresh(); return; }
+  if(a.startsWith('take-')){ if(a==='take-reel'&&!S.f.drawer) return; const k=a.slice(5); give(k); if(k==='abortcard') note('Found Kessler\'s abort card: twelve characters, in four boxes of three.'); refresh(); return; }
+  if(a==='cork'){ say('Duty roster, a canteen menu, and a memo: <i>"Cascade auto-confirms any launch report not aborted within 90 minutes. Abort codes are held by the duty officer only."</i>',5200); note('Memo: Cascade confirms the launch report automatically unless the duty officer aborts it.'); return; }
+  if(a==='phone'){ say('You crank the handset. Dead. The line went when the power did.'); return; }
+  if(a==='mug'){ say('Stone cold. Kessler poured it hours ago and never touched it.'); return; }
+  if(a==='jacket'){ if(S.taken.key){ say('The pockets are empty now.'); return; } give('key'); note('Found the Cascade key in Kessler\'s jacket pocket.'); say('In the breast pocket, on a red lanyard: a brass key stamped CASCADE.'); return; }
+}};
+
+/* ============================== CONSOLE ============================== */
+const KEYS='1234567890QWERTYUIOPASDFGHJKLZXCVBNM'.split('');
+scenes.console={ title:'Cascade relay console', parent:'overview',
+render(){
+  const keys=KEYS.map((k,i)=>{ const r=i<10?0:i<20?1:i<29?2:3, c=i<10?i:i<20?i-10:i<29?i-20:i-29, x=480+c*62+r*22, y=470+r*66;
+    return `<g data-act="k-${k}" data-cap="Key ${k}"><rect class="kcap" x="${x}" y="${y}" width="54" height="54" rx="6" fill="url(#gCream)" stroke="#5a5a4a" stroke-width="2"/><text x="${x+27}" y="${y+36}" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="24" fill="#222" pointer-events="none">${k}</text></g>`; }).join('');
+  return `<rect width="1600" height="900" fill="url(#gConc)"/><rect width="1600" height="900" fill="url(#pForm)"/>
+  <rect x="420" y="30" width="760" height="190" rx="10" fill="#0b0b0b" stroke="#5a5f5a" stroke-width="6"/>
+  <text x="800" y="66" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="20" fill="#c9c3a9" letter-spacing="3">AUTOMATIC CONFIRMATION IN</text>
+  ${ledText(800,186,'90:00',120,'#ff2a1a','cnCD')}
+  <path d="M120 900 L210 250 H1390 L1480 900Z" fill="url(#gSteel)" stroke="#262a25" stroke-width="4"/>
+  <rect x="500" y="290" width="600" height="110" rx="6" fill="#06140a" stroke="#333" stroke-width="4"/>
+  <text id="cnEntry" x="800" y="362" text-anchor="middle" font-family="Courier Prime, monospace" font-weight="700" font-size="52" fill="#5bff8a" letter-spacing="10" filter="url(#glowG)"></text>
+  <text id="cnStat" x="800" y="390" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="17" fill="#5bff8a" opacity=".8"></text>
+  ${keys}
+  <g data-act="clr" data-cap="Clear entry"><rect x="1150" y="470" width="110" height="54" rx="6" fill="#e8c51a" stroke="#5a5a4a" stroke-width="2"/><text x="1205" y="505" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="22" fill="#222">CLEAR</text></g>
+  <g data-act="ent" data-cap="Enter code"><rect x="1150" y="536" width="110" height="120" rx="6" fill="#2e8b3a" stroke="#1a4a20" stroke-width="2"/><text x="1205" y="604" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="22" fill="#fff">ENTER</text></g>
+  <!-- key switch -->
+  <g data-act="keyhole" data-use="key" data-cap="A key switch: SAFE / ARMED">
+    <circle cx="330" cy="400" r="70" fill="url(#gSteelD)" stroke="#111" stroke-width="4"/><text x="268" y="320" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#222">SAFE</text><text x="352" y="320" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#c0281f">ARMED</text>
+    <circle cx="330" cy="400" r="30" fill="url(#gBrassR)"/><rect x="326" y="380" width="8" height="40" fill="#222"/>
+    <g id="cnKey" style="display:none;transform-origin:330px 400px;transform-box:view-box;transition:transform .4s" class=""><rect x="318" y="350" width="24" height="70" rx="4" fill="#c9a23a" stroke="#6e5221"/><circle cx="330" cy="342" r="22" fill="none" stroke="#c9a23a" stroke-width="8"/></g>
+  </g>
+  ${['ARMED','CODE','ABORT'].map((t,i)=>`<g><circle id="cnL${i}" cx="${280+i*60}" cy="530" r="16" fill="#331" stroke="#111" stroke-width="3"/><text x="${280+i*60}" y="566" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="14" fill="#222">${t}</text></g>`).join('')}
+  <!-- abort button -->
+  <g data-act="button" data-cap="The abort button"><circle cx="1360" cy="380" r="64" fill="#5a1410"/><circle id="cnBtn" cx="1360" cy="374" r="54" fill="#d4281a" stroke="#7a1810" stroke-width="4" style="transition:transform .15s;transform-box:fill-box;transform-origin:center"/><text x="1360" y="470" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="26" fill="#c0281f">ABORT</text></g>
+  <g data-act="cover" data-cap="A hinged safety cover" id="cnCover" class="tr" style="transform-origin:1360px 300px;transform-box:view-box"><rect x="1286" y="300" width="148" height="148" rx="10" fill="#e8c51a" fill-opacity=".55" stroke="#8a7410" stroke-width="5"/>${[0,1,2,3].map(i=>`<path d="M${1286+i*40} 300 l40 148" stroke="#222" stroke-width="10" opacity=".45"/>`).join('')}</g>
+  <rect width="1600" height="900" fill="#2a0300" opacity="${pw('light')?0:.45}" style="mix-blend-mode:multiply" pointer-events="none"/>`;
+},
+update(el){
+  el.querySelector('#cnKey').style.display=S.f.keyIn?'':'none';
+  el.querySelector('#cnKey').style.transform=S.f.armed?'rotate(60deg)':'';
+  el.querySelector('#cnEntry').textContent=(S.entry||'').padEnd(12,'_').replace(/(.{3})(?!$)/g,'$1 ');
+  el.querySelector('#cnStat').textContent=S.f.codeOK?'CODE ACCEPTED. LIFT COVER AND PRESS ABORT.':S.f.armed?'ENTER 12-CHARACTER ABORT CODE':'TURN KEY TO ARMED';
+  el.querySelector('#cnL0').setAttribute('fill',S.f.armed?'#ffb000':'#331');
+  el.querySelector('#cnL1').setAttribute('fill',S.f.codeOK?'#3cff6a':'#331');
+  el.querySelector('#cnL2').setAttribute('fill',S.f.won?'#ff3a20':'#331');
+  el.querySelector('#cnCover').style.transform=S.f.cover?'scaleY(-.25)':'';
+},
+act(a,h,el){
+  if(S.f.won) return;
+  if(a.startsWith('k-')){ if(!S.f.armed){ say('The keypad is locked until the key switch is turned to ARMED.'); sfx.buzz(); return; } if(S.f.codeOK) return; if((S.entry||'').length>=12) return; S.entry=(S.entry||'')+a.slice(2); sfx.key(); const r=h.querySelector('.kcap'); r.animate([{transform:'translateY(4px)'},{transform:'none'}],{duration:140}); refresh(); return; }
+  if(a==='clr'){ S.entry=''; sfx.key(); refresh(); return; }
+  if(a==='ent'){
+    if(!S.f.armed){ sfx.buzz(); return; }
+    if((S.entry||'').length<12){ say('The code is twelve characters long.'); sfx.buzz(); return; }
+    if(S.entry===ABORT){ S.f.codeOK=true; sfx.success(); note('The console accepted the abort code.'); refresh(); say('CODE ACCEPTED. Lift the safety cover and press ABORT.'); }
+    else { S.pen=(S.pen||0)+60; S.mistakes++; S.entry=''; sfx.alarm(); refresh(); say('<b>CODE REJECTED.</b> Penalty: one minute removed from the countdown.',3600); tickHUD(); }
+    return;
+  }
+  if(a==='keyhole'){ if(!S.f.keyIn){ say('A key switch marked SAFE and ARMED. It needs a key.'); return; } S.f.armed=!S.f.armed; if(!S.f.armed){ S.entry=''; S.f.codeOK=false; } sfx.clunk(); refresh(); return; }
+  if(a==='cover'){ S.f.cover=!S.f.cover; sfx.click(); refresh(); return; }
+  if(a==='button'){ if(!S.f.cover){ say('The safety cover is down over the button.'); return; }
+    const b=el.querySelector('#cnBtn'); b.style.transform='scale(.9)'; setTimeout(()=>b.style.transform='',200); sfx.clunk();
+    if(!S.f.codeOK){ say('Nothing happens. The console needs the abort code first.'); return; }
+    S.f.won=true; save(); refresh(); sfx.alarm(); setTimeout(()=>{ sfx.success(); say('The countdown freezes, then blanks. A teleprinter chatters: CASCADE CONFIRMATION WITHDRAWN.',6000); },800); setTimeout(showWin,5200);
+  }
+},
+use(item,a){ if(item==='key'&&a==='keyhole'){ S.f.keyIn=true; S.inv=S.inv.filter(i=>i!=='key'); renderInv(); sfx.click(); say('The key slides into the switch.'); refresh(); } }
+};
+document.addEventListener('keydown',e=>{ if(S.scene!=='console'||$('#modal').classList.contains('on')) return; const k=e.key.toUpperCase(); const el=curEl(); if(KEYS.includes(k)){ const h=el.querySelector(`[data-act="k-${k}"]`); if(h) scenes.console.act('k-'+k,h,el); } else if(e.key==='Backspace'){ S.entry=(S.entry||'').slice(0,-1); refresh(); } else if(e.key==='Enter'){ scenes.console.act('ent',null,el); } });
+
+/* ============================== RECEIVER ============================== */
+const NS={timer:null,on:false,seq:[],i:0};
+const NUMW=['zero','one','two','three','four','five','six','seven','eight','nine'];
+function nsSeq(){ const s=[{t:'chime'},{t:'pause',d:2400}]; for(let r=0;r<2;r++){ s.push({t:'d',v:'2'},{t:'d',v:'9'},{t:'pause',d:900}); } s.push({t:'pause',d:1200}); TX.split(' ').forEach(g=>{ [...g].forEach(d=>s.push({t:'d',v:d})); s.push({t:'pause',d:1300}); }); s.push({t:'pause',d:3500}); return s; }
+function speak(w){ try{ if(!A.on) return; const u=new SpeechSynthesisUtterance(w); u.rate=.75; u.pitch=.6; u.volume=.9; speechSynthesis.speak(u); }catch(e){} }
+function nsStep(){ if(!NS.on) return; const e=NS.seq[NS.i%NS.seq.length]; NS.i++; const el=curEl();
+  if(e.t==='chime'){ sfx.chimeNS(); NS.timer=setTimeout(nsStep,1800); return; }
+  if(e.t==='pause'){ if(el){ const t=el.querySelector('#rxTape'); if(t&&e.d>=1200) { t.textContent+='  '; } } NS.timer=setTimeout(nsStep,e.d); return; }
+  speak(NUMW[+e.v]); tn(1000,.04,'sine',.03);
+  if(el){ const t=el.querySelector('#rxTape'); if(t){ t.textContent=(t.textContent+e.v).slice(-46); } const sp=el.querySelector('#rxSpk'); if(sp) sp.animate([{transform:'scale(1)'},{transform:'scale(1.02)'},{transform:'scale(1)'}],{duration:300}); }
+  NS.timer=setTimeout(nsStep,820);
+}
+function nsStart(){ if(NS.on) return; NS.on=true; NS.seq=nsSeq(); NS.i=0; nsStep(); if(!S.f.heard){ S.f.heard=true; note('Tuned to 6.250 MHz: a numbers station is broadcasting, starting with the indicator 29.'); save(); } }
+function nsStop(){ NS.on=false; clearTimeout(NS.timer); try{ speechSynthesis.cancel(); }catch(e){} }
+const TB=[10,20,50,100,200];
+scenes.receiver={ title:'Shortwave receiver', parent:'overview',
+render(){
+  const btns=[-1,-.1,-.01,-.001,.001,.01,.1,1].map((v,i)=>`<g data-act="f${v}" data-cap="Tune ${v>0?'up':'down'} ${Math.abs(v)} MHz"><rect x="${250+i*66}" y="420" width="58" height="44" rx="4" fill="url(#gSteelD)" stroke="#111"/><text x="${279+i*66}" y="448" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#e6e1cf">${v>0?'+':'−'}${Math.abs(v)}</text></g>`).join('');
+  return `<rect width="1600" height="900" fill="#1b1d1b"/>
+  <rect x="120" y="120" width="1360" height="560" rx="8" fill="url(#gOlive)" stroke="#262a10" stroke-width="6"/>${[150,1450].map(x=>[160,640].map(y=>screw(x,y,9)).join('')).join('')}
+  <text x="250" y="180" font-family="Allerta Stencil, Impact, sans-serif" font-size="28" fill="#1b1d10">R-390 / HF communications receiver</text>
+  <rect x="250" y="210" width="520" height="170" rx="6" fill="#120604" stroke="#000" stroke-width="4"/>
+  ${ledText(510,330,'',110,'#ff8a2a','rxF')}<text x="740" y="370" text-anchor="end" font-family="IBM Plex Sans Condensed, sans-serif" font-size="22" fill="#a65a20">MHz</text>
+  <rect x="820" y="210" width="260" height="170" rx="6" fill="#efe9d5" stroke="#222" stroke-width="4"/><path d="M850 350 A130 130 0 0 1 1050 350" fill="none" stroke="#222" stroke-width="2"/>${Array.from({length:11},(_,i)=>`<line x1="950" y1="380" x2="950" y2="${i%5?262:254}" stroke="#222" stroke-width="2" transform="rotate(${-50+i*10} 950 380)"/>`).join('')}<line id="rxNeedle" x1="950" y1="380" x2="950" y2="250" stroke="#c0281f" stroke-width="3"/><text x="950" y="372" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#222">SIGNAL</text>
+  ${btns}
+  <g id="rxSpk" style="transform-origin:510px 570px;transform-box:view-box"><rect x="250" y="490" width="520" height="160" rx="8" fill="#2a2d2a"/><rect x="262" y="502" width="496" height="136" fill="url(#pGrille)"/></g>
+  <g data-act="knob" data-drag="1" data-cap="Drag the tuning knob round to tune"><circle cx="1260" cy="470" r="150" fill="transparent"/><circle cx="1260" cy="470" r="130" fill="url(#gKnob)" stroke="#000" stroke-width="4"/><g id="rxKnob">${Array.from({length:36},(_,i)=>`<line x1="1260" y1="344" x2="1260" y2="356" stroke="#777" stroke-width="3" transform="rotate(${i*10} 1260 470)"/>`).join('')}<circle cx="1260" cy="380" r="14" fill="#555"/></g><text x="1260" y="640" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#1b1d10">TUNING</text></g>
+  <circle id="rxPow" cx="1120" cy="200" r="12" fill="#331"/><text x="1140" y="206" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#1b1d10">POWER</text>
+  <rect x="120" y="720" width="1360" height="110" fill="#eef0e6"/><rect x="120" y="720" width="1360" height="20" fill="#cfd6c8"/>
+  <text x="150" y="796" font-family="Courier Prime, monospace" font-size="44" fill="#222" letter-spacing="6" id="rxTape"></text>
+  <text x="1460" y="820" text-anchor="end" font-family="IBM Plex Sans Condensed, sans-serif" font-size="15" fill="#666">auto-transcriber</text>`;
+},
+mount(el){
+  const k=el.querySelector('[data-act="knob"]'), svg=el.querySelector('svg'); let drag=false,last=0,mv=0;
+  const ang=e=>{ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; const q=p.matrixTransform(svg.getScreenCTM().inverse()); return Math.atan2(q.y-470,q.x-1260); };
+  k.addEventListener('pointerdown',e=>{ drag=true; mv=0; last=ang(e); k.setPointerCapture(e.pointerId); e.preventDefault(); });
+  k.addEventListener('pointermove',e=>{ if(!drag) return; const a=ang(e); let d=a-last; if(d>Math.PI) d-=2*Math.PI; if(d<-Math.PI) d+=2*Math.PI; last=a; mv+=Math.abs(d); this.tune(el,d/(2*Math.PI)*.5); });
+  const end=()=>{ if(drag){ drag=false; el._dragged=mv>.05; } }; k.addEventListener('pointerup',end); k.addEventListener('pointercancel',end);
+  loopNoise('stat',1600,.5); this.tune(el,0);
+},
+leave(){ nsStop(); setLoop('stat',0); },
+tune(el,d){
+  if(!pw('rx')){ return; }
+  S.rx=Math.min(12,Math.max(3,Math.round((S.rx+d)*1000)/1000)); this.update(el);
+},
+update(el){
+  const on=pw('rx'); el.querySelector('#rxF').textContent=on?S.rx.toFixed(3).padStart(6,'0'):''; el.querySelector('#rxPow').setAttribute('fill',on?'#3cff6a':'#331');
+  el.querySelector('#rxKnob').setAttribute('transform',`rotate(${S.rx*720} 1260 470)`);
+  const df=Math.abs(S.rx-STATION_F), str=on?Math.exp(-df/.01):0;
+  el.querySelector('#rxNeedle').setAttribute('transform',`rotate(${-50+(on?Math.max(str*100,8+Math.random()*6):0)} 950 380)`);
+  if(on){ setLoop('stat',.18*(1-str*.85)+.02,1200+((S.rx*1000)%700)); } else setLoop('stat',0);
+  if(on&&df<=.0025) nsStart(); else nsStop();
+},
+act(a,h,el){
+  if(a==='knob'){ el._dragged=false; return; }
+  if(a[0]==='f'){ if(!pw('rx')){ say('The receiver is dead. Its circuit has no power.'); return; } sfx.tick(); this.tune(el,parseFloat(a.slice(1))); }
+}};
+
+/* ============================== SCOPE ============================== */
+const SC={raf:null,ph:0};
+scenes.scope={ title:'Oscilloscope', parent:'overview',
+render(){
+  return `<rect width="1600" height="900" fill="#1b1d1b"/>
+  <rect x="200" y="90" width="1200" height="720" rx="14" fill="url(#gCream)" stroke="#5a5a4a" stroke-width="6"/>
+  <text x="250" y="150" font-family="Allerta Stencil, Impact, sans-serif" font-size="28" fill="#3a3a2a">Tektronix 465 / input: receiver IF</text>
+  <rect x="270" y="180" width="660" height="540" rx="30" fill="#1b1d1b"/><rect x="330" y="230" width="560" height="448" rx="14" fill="url(#gCRT)"/>
+  <rect x="330" y="230" width="560" height="448" fill="url(#pGrat)"/><path d="M330 454 H890 M610 230 V678" stroke="#2f7a45" stroke-width="1.5" opacity=".8"/>
+  <path id="scTrace" d="" stroke="#6bff95" stroke-width="3" fill="none" filter="url(#glowG)"/>
+  <text id="scMsg" x="610" y="460" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="22" fill="#2f7a45"></text>
+  <g data-act="tb" data-cap="Time per division — click to change"><circle cx="1110" cy="320" r="80" fill="url(#gKnob)" stroke="#000" stroke-width="3"/><line id="scTbP" x1="1110" y1="320" x2="1110" y2="252" stroke="#e6e1cf" stroke-width="6"/><text x="1110" y="436" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#3a3a2a">TIME / DIV</text><text id="scTb" x="1110" y="470" text-anchor="middle" font-family="Courier Prime, monospace" font-weight="700" font-size="28" fill="#c0281f"></text></g>
+  <g data-act="vd" data-cap="Volts per division"><circle cx="1110" cy="590" r="60" fill="url(#gKnob)" stroke="#000" stroke-width="3"/><line x1="1110" y1="590" x2="1110" y2="540" stroke="#e6e1cf" stroke-width="5"/><text x="1110" y="684" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#3a3a2a">VOLTS / DIV  0.2</text></g>
+  <circle id="scPow" cx="1290" cy="150" r="12" fill="#331"/><text x="1310" y="156" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#3a3a2a">POWER</text>`;
+},
+mount(el){ const loop=()=>{ this.draw(el); SC.raf=requestAnimationFrame(loop); }; loop(); },
+leave(){ cancelAnimationFrame(SC.raf); },
+update(el){ el.querySelector('#scTb').textContent=TB[S.tb||2]+' ns'; el.querySelector('#scTbP').setAttribute('transform',`rotate(${-60+(S.tb||2)*30} 1110 320)`); el.querySelector('#scPow').setAttribute('fill',pw('scope')?'#3cff6a':'#331'); },
+draw(el){
+  const tr=el.querySelector('#scTrace'), msg=el.querySelector('#scMsg'); if(!tr) return;
+  if(!pw('scope')){ tr.setAttribute('d',''); msg.textContent=''; return; }
+  if(!pw('rx')){ tr.setAttribute('d','M330 454 H890'); msg.textContent='no input signal'; return; }
+  msg.textContent='';
+  const f=S.rx, tb=TB[S.tb===undefined?2:S.tb], perDiv=(1000/f)/tb, df=Math.abs(f-STATION_F), str=Math.exp(-df/.01);
+  SC.ph+= df<.0025?0:.25+df*2; const amp=40+str*120; let d='';
+  for(let i=0;i<=280;i++){ const xd=i/28, x=330+xd*56, y=454-amp*Math.sin(2*Math.PI*xd/perDiv+SC.ph)+(Math.random()-.5)*(1-str)*90; d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1); }
+  tr.setAttribute('d',d);
+},
+act(a){ if(a==='tb'){ S.tb=((S.tb===undefined?2:S.tb)+1)%TB.length; sfx.click(); refresh(); } if(a==='vd') say('The vertical scale is fixed at 0.2 volts per division.'); }
+};
+/* ============================== ROTOR MACHINE ============================== */
+const KB=['QWERTZUIO','ASDFGHJK','PYXCVBNML'];
+function kbPos(ch,y0,dx=96){ for(let r=0;r<3;r++){ const i=KB[r].indexOf(ch); if(i>=0){ const n=KB[r].length; return [800+(i-(n-1)/2)*dx, y0+r*(dx*.8)]; } } }
+function rotorStep(){
+  const R=S.rot, p=R.pos.split('').map(c=>c.charCodeAt(0)-65), o=R.order;
+  const m=p[1]===ROT[o[1]][1].charCodeAt(0)-65, r=p[2]===ROT[o[2]][1].charCodeAt(0)-65;
+  if(m){ p[0]=(p[0]+1)%26; p[1]=(p[1]+1)%26; } else if(r){ p[1]=(p[1]+1)%26; }
+  p[2]=(p[2]+1)%26; R.pos=p.map(x=>String.fromCharCode(65+x)).join(''); return p;
+}
+function rotorEnc(ch){
+  const R=S.rot, P={}; 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(c=>P[c]=c); R.plugs.forEach(([a,b])=>{P[a]=b;P[b]=a;});
+  const p=rotorStep(), o=R.order; let c=P[ch].charCodeAt(0)-65;
+  for(const i of [2,1,0]){ const w=ROT[o[i]][0]; c=(w.charCodeAt((c+p[i])%26)-65-p[i]+26)%26; }
+  c=UKW.charCodeAt(c)-65;
+  for(const i of [0,1,2]){ const w=ROT[o[i]][0]; c=(w.indexOf(String.fromCharCode((c+p[i])%26+65))-p[i]+26)%26; }
+  return P[String.fromCharCode(65+c)];
+}
+scenes.rotor={ title:'M-4 rotor cipher machine', parent:'overview',
+render(){
+  if(!S.rot) S.rot={order:['I','II','III'],pos:'AAA',plugs:[],log:''};
+  const AL='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const lamps=AL.map(c=>{ const [x,y]=kbPos(c,252,90); return `<g><circle id="lp-${c}" cx="${x}" cy="${y}" r="30" fill="#2a2a24" stroke="#111" stroke-width="3"/><text x="${x}" y="${y+9}" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="26" fill="#9a967f" id="lt-${c}">${c}</text></g>`; }).join('');
+  const keys=AL.map(c=>{ const [x,y]=kbPos(c,468,90); return `<g data-act="key-${c}" data-cap="Key ${c}"><circle cx="${x}" cy="${y+4}" r="31" fill="#111"/><circle class="kc" cx="${x}" cy="${y}" r="30" fill="#1d1d1a" stroke="#888" stroke-width="3"/><text x="${x}" y="${y+9}" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="26" fill="#e6e1cf" pointer-events="none">${c}</text></g>`; }).join('');
+  const plugs=AL.map(c=>{ const [x,y]=kbPos(c,716,62); return `<g data-act="plug-${c}" data-cap="Plugboard socket ${c}"><rect x="${x-22}" y="${y-22}" width="44" height="44" rx="4" fill="#1b1b18" stroke="#555"/><circle cx="${x-8}" cy="${y+4}" r="5" fill="#000"/><circle cx="${x+8}" cy="${y+4}" r="5" fill="#000"/><text x="${x}" y="${y-8}" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="13" fill="#bbb">${c}</text><circle id="pg-${c}" cx="${x}" cy="${y+4}" r="15" fill="none" stroke="none" stroke-width="4"/></g>`; }).join('');
+  const rot=[0,1,2].map(i=>{ const x=620+i*180; return `<g>
+    <rect x="${x-50}" y="40" width="100" height="120" rx="8" fill="#111" stroke="#555" stroke-width="3"/><rect x="${x-32}" y="70" width="64" height="62" fill="#e6e1cf"/><text id="rw${i}" x="${x}" y="118" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="700" font-size="46" fill="#111"></text>
+    <g data-act="ru-${i}" data-cap="Turn rotor forward"><path d="M${x+66} 60 l20 30 h-40z" fill="#bbb"/></g><g data-act="rd-${i}" data-cap="Turn rotor back"><path d="M${x+66} 140 l20 -30 h-40z" fill="#bbb"/></g>
+    <g data-act="ro-${i}" data-cap="Swap this rotor"><rect x="${x-40}" y="170" width="80" height="36" rx="4" fill="url(#gBrassH)"/><text id="rn${i}" x="${x}" y="197" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="700" font-size="24" fill="#222"></text></g></g>`; }).join('');
+  return `<rect width="1600" height="900" fill="#2a2016"/>
+  <rect x="150" y="20" width="1300" height="870" rx="16" fill="#5a4630" stroke="#2a1a0a" stroke-width="6"/><rect x="180" y="30" width="1240" height="840" rx="10" fill="#2e312c"/>
+  <rect x="200" y="40" width="300" height="170" rx="6" fill="#eef0e6"/><text x="214" y="68" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#666">lamp log</text><text id="rtLog" x="214" y="110" font-family="Courier Prime, monospace" font-weight="700" font-size="30" fill="#222" letter-spacing="2"></text><text id="rtLog2" x="214" y="150" font-family="Courier Prime, monospace" font-weight="700" font-size="30" fill="#222" letter-spacing="2"></text>
+  <g data-act="clearlog" data-cap="Tear off the lamp log"><rect x="380" y="170" width="110" height="30" rx="4" fill="#bbb"/><text x="435" y="191" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#222">Tear off</text></g>
+  ${rot}
+  <text x="1300" y="90" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="34" fill="#c9c3a9">M-4</text><circle id="rtPow" cx="1300" cy="130" r="12" fill="#331"/>
+  ${lamps}${keys}
+  <rect x="200" y="672" width="1200" height="204" rx="6" fill="#262620"/><g id="rtCables"></g>${plugs}
+  <rect width="1600" height="900" fill="#2a0300" opacity="${pw('light')?0:.45}" style="mix-blend-mode:multiply" pointer-events="none"/>`;
+},
+mount(el){ this._kd=e=>{ if(S.scene!=='rotor'||$('#modal').classList.contains('on')) return; const k=e.key.toUpperCase(); if(/^[A-Z]$/.test(k)) { e.preventDefault(); this.press(curEl(),k); } }; document.addEventListener('keydown',this._kd); },
+leave(){ document.removeEventListener('keydown',this._kd); },
+update(el){
+  const R=S.rot; for(let i=0;i<3;i++){ el.querySelector('#rw'+i).textContent=R.pos[i]; el.querySelector('#rn'+i).textContent=R.order[i]; }
+  const lg=R.log.slice(-30).replace(/(.{5})/g,'$1 ').trim(); el.querySelector('#rtLog').textContent=lg.slice(0,18); el.querySelector('#rtLog2').textContent=lg.slice(18,36);
+  el.querySelector('#rtPow').setAttribute('fill',pw('crypto')?'#3cff6a':'#331');
+  const cols=['#c0281f','#2b55c0','#e8c51a','#2e8b3a','#e07020','#7b3fb5','#ddd','#6b3a1e','#e86fa0','#3ac8c8','#888','#9b9b2a','#111'];
+  let cab=''; R.plugs.forEach(([a,b],i)=>{ const [x1,y1]=kbPos(a,716,62), [x2,y2]=kbPos(b,716,62); cab+=`<path d="M${x1} ${y1+4} C${x1} ${y1+120} ${x2} ${y2+120} ${x2} ${y2+4}" stroke="${cols[i%13]}" stroke-width="8" fill="none" opacity=".9"/>`; });
+  el.querySelector('#rtCables').innerHTML=cab;
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(c=>{ const g=el.querySelector('#pg-'+c); const used=R.plugs.some(p=>p.includes(c)); g.setAttribute('stroke',S.plugSel===c?'#ffb000':used?'#ddd':'none'); });
+},
+press(el,c){
+  if(!pw('crypto')){ say('The machine is dead. The cipher room circuit has no power.'); return; }
+  const out=rotorEnc(c); S.rot.log=(S.rot.log+out).slice(-60); sfx.key(); sfx.tick();
+  const kc=el.querySelector(`[data-act="key-${c}"] .kc`); if(kc) kc.animate([{transform:'translateY(5px)'},{transform:'none'}],{duration:180});
+  const lp=el.querySelector('#lp-'+out), lt=el.querySelector('#lt-'+out);
+  lp.setAttribute('fill','#ffd76a'); lt.setAttribute('fill','#3a2a00'); clearTimeout(this._lt); el.querySelectorAll('[id^="lp-"]').forEach(n=>{ if(n!==lp) n.setAttribute('fill','#2a2a24'); });
+  this._lt=setTimeout(()=>{ lp.setAttribute('fill','#2a2a24'); lt.setAttribute("fill","#9a967f"); },450);
+  this.update(el); save();
+  if(!S.f.b2 && S.rot.log.includes('XLUX')){ S.f.b2=true; note('The M-4 machine decrypted the intercept: BOX TWO X LUX.'); say('The lamps spell out a readable message.'); }
+},
+act(a,h,el){
+  const R=S.rot;
+  if(a.startsWith('key-')) return this.press(el,a.slice(4));
+  if(a.startsWith('ru-')||a.startsWith('rd-')){ const i=+a.slice(3), p=R.pos.split(''); p[i]=String.fromCharCode(65+((p[i].charCodeAt(0)-65+(a[1]==='u'?1:25))%26)); R.pos=p.join(''); sfx.tick(); refresh(); return; }
+  if(a.startsWith('ro-')){ const i=+a.slice(3); let k=ROMANS.indexOf(R.order[i]); for(let n=0;n<5;n++){ k=(k+1)%5; if(!R.order.includes(ROMANS[k])) break; } R.order[i]=ROMANS[k]; sfx.clunk(); refresh(); return; }
+  if(a==='clearlog'){ R.log=''; sfx.page(); refresh(); return; }
+  if(a.startsWith('plug-')){ const c=a.slice(5); const idx=R.plugs.findIndex(p=>p.includes(c));
+    if(idx>=0){ R.plugs.splice(idx,1); S.plugSel=null; sfx.click(); }
+    else if(!S.plugSel){ S.plugSel=c; sfx.click(); }
+    else if(S.plugSel===c){ S.plugSel=null; }
+    else { R.plugs.push([S.plugSel,c]); S.plugSel=null; sfx.clunk(); }
+    refresh(); }
+}};
+
+/* ============================== CARDS ============================== */
+scenes.cards={ title:'Card reader and line printer', parent:'overview',
+render(){
+  return `<rect width="1600" height="900" fill="url(#gConc)"/><rect width="1600" height="900" fill="url(#pForm)"/><rect y="840" width="1600" height="60" fill="#3d4038"/>
+  <rect x="140" y="160" width="640" height="700" rx="8" fill="url(#gCream)" stroke="#5a5a4a" stroke-width="5"/>
+  <text x="170" y="210" font-family="Allerta Stencil, Impact, sans-serif" font-size="28" fill="#3a3a2a">IBM 2501 card reader</text>
+  <rect x="170" y="240" width="580" height="90" fill="#2a2e29"/>
+  <g data-act="hopper" data-use="cardA" data-cap="The input hopper"><rect x="190" y="230" width="220" height="40" fill="#1b1d1b" stroke="#111"/><g id="cdIn"><path d="M200 182 H400 V248 H212 L200 236Z" fill="#e9dcae" stroke="#9a8a5a" stroke-width="2"/></g></g>
+  <g id="cdMove" style="display:none"><path d="M200 262 H400 V318 H212 L200 306Z" fill="#e9dcae" stroke="#9a8a5a" stroke-width="2"/></g>
+  <g data-act="stacker" data-cap="The output stacker"><rect x="520" y="230" width="220" height="40" fill="#1b1d1b" stroke="#111"/><g id="cdOut" style="display:none"><path d="M530 182 H730 V248 H542 L530 236Z" fill="#e9dcae" stroke="#9a8a5a" stroke-width="2"/></g></g>
+  <text x="460" y="390" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#3a3a2a">ROW BUFFER</text>
+  ${[7,6,5,4,3,2,1,0].map((b,i)=>`<g><circle id="cb${i}" cx="${205+i*72}" cy="440" r="24" fill="#331" stroke="#111" stroke-width="3"/><text x="${205+i*72}" y="496" text-anchor="middle" font-family="Courier Prime, monospace" font-size="18" fill="#3a3a2a">bit ${b}</text></g>`).join('')}
+  <rect x="300" y="530" width="320" height="60" fill="#120604"/>${ledText(460,575,'ROW -',36,'#ff8a2a','cdRow')}
+  <g data-act="read" data-cap="Read the card"><rect x="330" y="640" width="260" height="70" rx="6" fill="#2e8b3a" stroke="#1a4a20" stroke-width="3"/><text x="460" y="684" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="26" fill="#fff">READ CARD</text></g>
+  <!-- line printer -->
+  <rect x="880" y="380" width="620" height="480" rx="8" fill="url(#gCream)" stroke="#5a5a4a" stroke-width="5"/><rect x="900" y="400" width="580" height="70" fill="#2a2e29"/>
+  <text x="910" y="520" font-family="Allerta Stencil, Impact, sans-serif" font-size="24" fill="#3a3a2a">Line printer</text>
+  <path d="M960 400 C960 300 1000 220 1080 180 H1300 C1360 220 1400 300 1400 400Z" fill="#eef0e6" stroke="#bbb"/>${Array.from({length:10},(_,i)=>`<rect x="${1000+(i%2)*20}" y="${230+i*16}" width="${200+(i*37)%120}" height="4" fill="#9ab09c" opacity=".6"/>`).join('')}
+  <g data-act="take-hexdump" data-cap="A printout headed DUMP" id="cdHex"><rect x="920" y="580" width="260" height="200" fill="#eef0e6" stroke="#aaa" transform="rotate(-4 1050 680)"/>${[0,1,2,3,4,5,6,7].map(i=>`<rect x="930" y="${595+i*22}" width="240" height="11" fill="#cfe6d2" transform="rotate(-4 1050 680)"/>`).join('')}<text x="940" y="612" font-family="Courier Prime, monospace" font-size="15" fill="#222" transform="rotate(-4 1050 680)">DUMP 0000</text></g>
+  <g data-act="take-intercept" data-cap="A printout headed INTERCEPT" id="cdInt"><rect x="1210" y="590" width="260" height="190" fill="#eef0e6" stroke="#aaa" transform="rotate(3 1340 685)"/><text x="1224" y="620" font-family="Courier Prime, monospace" font-weight="700" font-size="17" fill="#c0281f" transform="rotate(3 1340 685)">INTERCEPT</text>${[0,1,2,3].map(i=>`<rect x="1224" y="${640+i*24}" width="${200-i*30}" height="5" fill="#333" transform="rotate(3 1340 685)"/>`).join('')}</g>
+  <rect width="1600" height="900" fill="#2a0300" opacity="${pw('light')?0:.5}" style="mix-blend-mode:multiply" pointer-events="none"/>`;
+},
+update(el){
+  const inHopper=!S.taken.cardA && !S.f.cardOut;
+  el.querySelector('#cdIn').style.display=inHopper||S.f.cardIn?'':'none';
+  el.querySelector('#cdOut').style.display=S.f.cardOut&&!S.taken.cardA?'':'none';
+  el.querySelector('#cdHex').style.display=S.taken.hexdump?'none':''; el.querySelector('#cdInt').style.display=S.taken.intercept?'none':'';
+},
+act(a,h,el){
+  if(a.startsWith('take-')){ give(a.slice(5)); refresh(); return; }
+  if(a==='stacker'){ if(S.f.cardOut&&!S.taken.cardA){ give('cardA'); S.f.cardOut=false; refresh(); } return; }
+  if(a==='hopper'){ const has=(!S.taken.cardA&&!S.f.cardOut)||S.f.cardIn; if(has){ if(pw('crypto')) say('A punch card sits in the hopper. Press READ CARD to feed it.'); else { give('cardA'); S.f.cardOut=false; S.f.cardIn=false; S.taken.cardA=true; refresh(); } } return; }
+  if(a==='read'){
+    const has=(!S.taken.cardA&&!S.f.cardOut)||S.f.cardIn; if(!pw('crypto')){ say('The reader is dead. The card room circuit has no power.'); return; } if(!has){ say('The hopper is empty.'); sfx.buzz(); return; } if(this._busy) return; this._busy=true;
+    S.taken.cardA=false; S.f.cardIn=false; refresh(); el.querySelector('#cdIn').style.display='none'; const mv=el.querySelector('#cdMove'); mv.style.display=''; sfx.slide();
+    const rows=[...CARD_TXT].map(c=>c.charCodeAt(0).toString(2).padStart(8,'0'));
+    rows.forEach((r,ri)=>setTimeout(()=>{ mv.setAttribute('transform',`translate(${ri*45} 0)`); el.querySelector('#cdRow').textContent='ROW '+(ri+1); [...r].forEach((b,i)=>el.querySelector('#cb'+i).setAttribute('fill',b==='1'?'#ffb000':'#331')); sfx.tick(); if(b0(r)) sfx.printer(); },600+ri*1100));
+    function b0(){ return false; }
+    setTimeout(()=>{ mv.style.display='none'; mv.removeAttribute('transform'); S.f.cardOut=true; S.f.read=true; this._busy=false; refresh(); [...Array(8).keys()].forEach(i=>el.querySelector('#cb'+i).setAttribute('fill','#331')); el.querySelector('#cdRow').textContent='ROW -'; note('Fed the punch card through the reader: eight rows of eight bits.'); save(); },600+rows.length*1100+600);
+  }
+},
+use(item,a){ if(item==='cardA'&&a==='hopper'){ S.inv=S.inv.filter(i=>i!=='cardA'); S.f.cardIn=true; renderInv(); sfx.slide(); refresh(); say('The card drops into the hopper.'); } }
+};
+
+/* ============================== TAPE + ANALYSER ============================== */
+const SPEEDS=[3.75,7.5,15], BANDS=[[0,5],[5,10],[10,20]];
+const TP={raf:null,t:0,last:0,noise:null};
+function specNoise(){ if(TP.noise) return TP.noise; const a=[]; for(let i=0;i<260;i++) a.push([Math.random()*30,Math.random()*20,Math.random()]); const v=[]; for(let i=0;i<46;i++) v.push([Math.random()*30,.3+Math.random()*2.8,.4+Math.random()*1.4,Math.random()]); TP.noise={a,v}; return TP.noise; }
+const TLET=[['9',9],['K',15],['Z',21]];
+scenes.tape={ title:'Tape deck and spectrum analyser', parent:'overview',
+render(){
+  return `<defs><clipPath id="spClip"><rect x="880" y="170" width="540" height="380"/></clipPath></defs>
+  <rect width="1600" height="900" fill="url(#gConc)"/><rect width="1600" height="900" fill="url(#pForm)"/>
+  <rect x="120" y="60" width="660" height="800" rx="8" fill="url(#gSteel)" stroke="#262a25" stroke-width="5"/>
+  <text x="150" y="104" font-family="Allerta Stencil, Impact, sans-serif" font-size="26" fill="#262a25">Ampex reel-to-reel</text>
+  <g data-act="hubL" data-use="reel" data-cap="The supply spindle"><circle cx="290" cy="290" r="130" fill="#262a25"/><g id="tpL" style="transform-origin:290px 290px;transform-box:view-box"><circle cx="290" cy="290" r="120" fill="#1b1d1b" stroke="#999" stroke-width="3"/><circle cx="290" cy="290" r="90" fill="#5a3a1e"/>${[0,1,2].map(i=>`<circle cx="${290+60*Math.cos(i*2.09)}" cy="${290+60*Math.sin(i*2.09)}" r="20" fill="#111"/>`).join('')}<rect x="250" y="190" width="80" height="20" fill="#e6e1cf"/></g><circle cx="290" cy="290" r="14" fill="#ccc"/></g>
+  <g><circle cx="610" cy="290" r="130" fill="#262a25"/><g id="tpR" style="transform-origin:610px 290px;transform-box:view-box"><circle cx="610" cy="290" r="120" fill="#1b1d1b" stroke="#999" stroke-width="3"/><circle cx="610" cy="290" r="50" fill="#5a3a1e" id="tpRtape"/>${[0,1,2].map(i=>`<circle cx="${610+60*Math.cos(i*2.09)}" cy="${290+60*Math.sin(i*2.09)}" r="20" fill="#111"/>`).join('')}</g><circle cx="610" cy="290" r="14" fill="#ccc"/></g>
+  <path id="tpPath" d="M290 410 L380 470 H520 L610 410" stroke="#5a3a1e" stroke-width="5" fill="none"/>
+  <rect x="380" y="456" width="140" height="40" rx="4" fill="#bbb" stroke="#555"/>
+  <g data-act="play" data-cap="Play"><rect x="200" y="560" width="150" height="70" rx="6" fill="#2a2e29" stroke="#111"/><path d="M262 575 l30 20 l-30 20z" fill="#3cff6a"/></g>
+  <g data-act="stop" data-cap="Stop"><rect x="370" y="560" width="150" height="70" rx="6" fill="#2a2e29" stroke="#111"/><rect x="430" y="577" width="30" height="36" fill="#e6e1cf"/></g>
+  <g data-act="speed" data-cap="Tape speed selector"><circle cx="640" cy="600" r="60" fill="url(#gKnob)" stroke="#000" stroke-width="3"/><line id="tpSpd" x1="640" y1="600" x2="640" y2="548" stroke="#e6e1cf" stroke-width="6"/>${SPEEDS.map((s,i)=>`<text x="${640+90*Math.sin((-50+i*50)*Math.PI/180)}" y="${600-90*Math.cos((-50+i*50)*Math.PI/180)+6}" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="17" fill="#262a25">${['3¾','7½','15'][i]}</text>`).join('')}<text x="640" y="700" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="16" fill="#262a25">inches per second</text></g>
+  <circle id="tpPow" cx="720" cy="96" r="12" fill="#331"/>
+  <!-- analyser -->
+  <rect x="830" y="100" width="640" height="720" rx="10" fill="url(#gCream)" stroke="#5a5a4a" stroke-width="5"/>
+  <rect x="870" y="160" width="560" height="400" rx="12" fill="url(#gCRT)"/>
+  <g clip-path="url(#spClip)"><g id="spG"></g></g>
+  <g stroke="#2f7a45" stroke-width="1" opacity=".5">${[0,1,2,3,4].map(i=>`<line x1="880" y1="${170+i*95}" x2="1420" y2="${170+i*95}"/>`).join('')}</g>
+  <g id="spAxis" font-family="Courier Prime, monospace" font-size="15" fill="#3a3a2a"></g>
+  <text x="1150" y="596" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#3a3a2a">Spectrum analyser: frequency (up) against time (across)</text>
+  ${BANDS.map((b,i)=>`<g data-act="band-${i}" data-cap="Show ${b[0]} to ${b[1]} kHz"><rect class="bandb" x="${900+i*175}" y="630" width="155" height="70" rx="6" fill="#2a2e29" stroke="#111" stroke-width="3"/><text x="${977+i*175}" y="674" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="22" fill="#e6e1cf">${b[0]}–${b[1]} kHz</text></g>`).join('')}
+  <rect width="1600" height="900" fill="#2a0300" opacity="${pw('light')?0:.5}" style="mix-blend-mode:multiply" pointer-events="none"/>`;
+},
+mount(el){ loopNoise('tape',700,.6); TP.last=performance.now(); const loop=n=>{ this.frame(el,n); TP.raf=requestAnimationFrame(loop); }; TP.raf=requestAnimationFrame(loop); },
+leave(){ cancelAnimationFrame(TP.raf); S.f.playing=false; setLoop('tape',0); },
+update(el){
+  const on=pw('tape'); el.querySelector('#tpPow').setAttribute('fill',on?'#3cff6a':'#331');
+  el.querySelector('#tpL').style.display=S.f.reelOn?'':'none'; el.querySelector('#tpPath').style.display=S.f.reelOn?'':'none';
+  el.querySelector('#tpSpd').setAttribute('transform',`rotate(${-50+(S.spd||0)*50} 640 600)`);
+  el.querySelectorAll('.bandb').forEach((b,i)=>b.setAttribute('stroke',(S.band||0)===i?'#ffb000':'#111'));
+  const B=BANDS[S.band||0]; el.querySelector('#spAxis').innerHTML=[0,1,2,3,4].map(i=>`<text x="862" y="${555-i*95}" text-anchor="end">${(B[0]+(B[1]-B[0])*i/4).toFixed(1)}</text>`).join('')+`<text x="862" y="150" text-anchor="end">kHz</text>`;
+  ['tpL','tpR'].forEach(id=>{ const g=el.querySelector('#'+id); g.getAnimations().forEach(a=>a.cancel()); if(S.f.playing){ g.animate([{transform:'rotate(0deg)'},{transform:'rotate(-360deg)'}],{duration:4000/SPEEDS[S.spd||0]*3.75,iterations:Infinity}); } });
+  setLoop('tape',S.f.playing?.08:0,500*SPEEDS[S.spd||0]/3.75);
+},
+frame(el,now){
+  const dt=Math.min(.1,(now-TP.last)/1000); TP.last=now; const g=el.querySelector('#spG'); if(!g) return;
+  if(!pw('tape')){ g.innerHTML=''; return; }
+  const ratio=SPEEDS[S.spd||0]/3.75, B=BANDS[S.band||0], H=380, Y0=550, X1=1420, PX=72;
+  if(S.f.playing) TP.t=(TP.t+dt*ratio)%30;
+  const N=specNoise(); const fy=f=>Y0-(f*ratio-B[0])/(B[1]-B[0])*H;
+  const xf=tau=>{ let dtp=(TP.t-tau); if(dtp<0) dtp+=30; return X1-dtp/ratio*PX; };
+  let s='';
+  if(S.f.reelOn){
+    N.v.forEach(([tau,f,w,o])=>{ const x=xf(tau), y=fy(f); if(x>860&&y>150&&y<580) s+=`<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${(w*PX/ratio*.5).toFixed(0)}" ry="${(12*ratio).toFixed(0)}" fill="#5bff8a" opacity="${(.15+o*.3).toFixed(2)}"/>`; });
+    let vis=false;
+    TLET.forEach(([L,tau])=>{ const x=xf(tau), y=fy(5.5); const top=fy(7.5); if(x>840&&x<1440&&top<580&&y>150){ s+=`<text x="0" y="0" transform="translate(${x.toFixed(0)} ${y.toFixed(0)}) scale(${(1/ratio).toFixed(3)} ${(ratio*(5/(B[1]-B[0]))).toFixed(3)})" font-family="Courier Prime, monospace" font-weight="700" font-size="170" fill="#7dffa8" opacity=".85">${L}</text>`; if(x>900&&x<1350) vis=true; } });
+    if(vis&&S.f.playing&&!S.f.b3){ S.f.b3=true; note('The tape\'s spectrum shows characters drawn in sound, high above the voice band.'); save(); }
+  }
+  N.a.forEach(([tau,f,o])=>{ const x=S.f.reelOn?xf(tau):880+(tau/30)*540, y=fy(f/ratio); if(y>150&&y<580&&x>860) s+=`<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="4" height="3" fill="#5bff8a" opacity="${(o*.5*(S.f.playing?1:.4)).toFixed(2)}"/>`; });
+  g.innerHTML=s;
+},
+act(a,h,el){
+  if(a==='hubL'){ say(S.f.reelOn?'Kessler\'s reel is threaded and ready.':'An empty supply spindle.'); return; }
+  if(a==='play'){ if(!pw('tape')){ say('The deck has no power.'); return; } if(!S.f.reelOn){ say('There\'s no tape on the deck.'); return; } S.f.playing=true; sfx.clunk(); refresh(); return; }
+  if(a==='stop'){ S.f.playing=false; sfx.clunk(); refresh(); return; }
+  if(a==='speed'){ S.spd=((S.spd||0)+1)%3; sfx.click(); refresh(); return; }
+  if(a.startsWith('band-')){ S.band=+a.slice(5); sfx.click(); refresh(); }
+},
+use(item,a){ if(item==='reel'&&a==='hubL'){ S.f.reelOn=true; S.inv=S.inv.filter(i=>i!=='reel'); renderInv(); sfx.clunk(); say('You thread the tape past the heads onto the take-up reel.'); refresh(); } }
+};
+
+/* ============================== SAFE + LOGIC ============================== */
+scenes.safe={ title:'Logic-locked wall safe', parent:'overview',
+render(){
+  if(!S.gates) S.gates=[0,0,0]; if(!S.inp) S.inp=[0,0,0,0];
+  const sw=['A','B','C','D'].map((n,i)=>{ const y=[130,220,330,420][i]; return `<g data-act="sw-${i}" data-cap="Input ${n}"><text x="190" y="${y+8}" font-family="Allerta Stencil, Impact, sans-serif" font-size="28" fill="#e6e1cf">${n}</text><rect x="220" y="${y-22}" width="60" height="44" rx="6" fill="#111" stroke="#555"/><g id="swk${i}" class="tr" style="transform-box:view-box"><rect x="226" y="${y-16}" width="22" height="32" rx="3" fill="#ccc"/></g></g>`; }).join('');
+  const W=(id,d)=>`<path id="${id}" d="${d}" stroke="#444" stroke-width="7" fill="none" stroke-linejoin="round"/>`;
+  const gate=(i,x,y)=>`<g data-act="g-${i}" data-cap="A gate socket — click to change the gate"><rect x="${x-70}" y="${y-56}" width="140" height="112" rx="8" fill="#1b1d1b" stroke="#555" stroke-dasharray="6 4"/><g id="gs${i}" transform="translate(${x} ${y})" fill="#d9d3bb" stroke="#222" stroke-width="3"></g><text id="gt${i}" x="${x}" y="${y+78}" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="20" fill="#e6e1cf"></text></g>`;
+  return `<rect width="1600" height="900" fill="url(#gConc)"/><rect width="1600" height="900" fill="url(#pForm)"/>
+  <rect x="140" y="50" width="980" height="500" rx="8" fill="#2a2e29" stroke="#111" stroke-width="5"/>
+  ${W('w0','M280 130 H400 V155 H470')}${W('w1','M280 220 H400 V195 H470')}${W('w2','M280 330 H400 V355 H470')}${W('w3','M280 420 H400 V395 H470')}
+  ${W('w4','M590 175 H680 V255 H750')}${W('w5','M590 375 H680 V295 H750')}${W('w6','M870 275 H960')}
+  ${sw}${gate(0,530,175)}${gate(1,530,375)}${gate(2,810,275)}
+  <circle id="lY" cx="1000" cy="275" r="34" fill="#331" stroke="#111" stroke-width="4"/><text x="1000" y="345" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="28" fill="#e6e1cf">Y</text>
+  <text x="180" y="525" font-family="IBM Plex Sans Condensed, sans-serif" font-size="18" fill="#9a9a8a">Lamp Y lit = 1. Fit the three gates so Y matches the specification for every row.</text>
+  <!-- spec -->
+  <rect x="1150" y="50" width="380" height="500" rx="4" fill="#e6e1cf" stroke="#555" stroke-width="3"/>
+  <text x="1340" y="92" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="24" fill="#222">Lock specification</text>
+  ${['A','B','C','D','Y',''].map((h,i)=>`<text x="${1200+i*56}" y="132" text-anchor="middle" font-family="Courier Prime, monospace" font-weight="700" font-size="22" fill="#c0281f">${h}</text>`).join('')}
+  ${LOGIC_ROWS.map((r,ri)=>r.map((v,i)=>`<text x="${1200+i*56}" y="${170+ri*40}" text-anchor="middle" font-family="Courier Prime, monospace" font-size="24" fill="#222">${v}</text>`).join('')+`<text id="ck${ri}" x="${1200+5*56}" y="${170+ri*40}" text-anchor="middle" font-family="Courier Prime, monospace" font-weight="700" font-size="24"></text>`).join('')}
+  <g data-act="test" data-cap="Run the lock test"><rect x="1180" y="458" width="320" height="64" rx="6" fill="#c0281f" stroke="#5a1410" stroke-width="3"/><text x="1340" y="500" text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="24" fill="#fff">RUN TEST</text></g>
+  <!-- safe -->
+  <rect x="380" y="590" width="840" height="290" fill="#0b0c0b"/>
+  <g data-act="take-pad" data-cap="A red booklet" id="sfPad"><rect x="480" y="680" width="140" height="180" fill="#c0281f" stroke="#5a1410" stroke-width="3"/><rect x="500" y="700" width="100" height="40" fill="#efe9d5"/></g>
+  <g data-act="take-codebook" data-cap="A blue folder stamped SECRET" id="sfBook"><rect x="700" y="660" width="220" height="200" fill="#2b3a55" stroke="#141c2c" stroke-width="3"/><text x="810" y="770" text-anchor="middle" font-family="Allerta Stencil, Impact, sans-serif" font-size="28" fill="#c0281f">SECRET</text></g>
+  <g id="sfDoor" data-act="safedoor" data-cap="The safe door" class="tr" style="transform-origin:1220px 735px;transform-box:view-box">
+    <rect x="380" y="590" width="840" height="290" rx="10" fill="url(#gSteel)" stroke="#262a25" stroke-width="6"/><circle cx="800" cy="735" r="90" fill="url(#gKnob)" stroke="#888" stroke-width="4"/>${Array.from({length:24},(_,i)=>`<line x1="800" y1="650" x2="800" y2="664" stroke="#bbb" stroke-width="3" transform="rotate(${i*15} 800 735)"/>`).join('')}<rect x="1060" y="700" width="100" height="70" rx="6" fill="#2a2e29"/><circle id="sfLamp" cx="1110" cy="735" r="16" fill="#c0281f"/></g>
+  <rect width="1600" height="900" fill="#2a0300" opacity="${pw('light')?0:.45}" style="mix-blend-mode:multiply" pointer-events="none"/>`;
+},
+calc(){ const [A,B,C,D]=S.inp, g=S.gates.map(i=>GATES[i]); const o1=GF[g[0]](A,B), o2=GF[g[1]](C,D), y=GF[g[2]](o1,o2); return {o1,o2,y}; },
+update(el){
+  const on=pw('light'), r=this.calc(), lit='#ffb000', dim='#444';
+  S.inp.forEach((v,i)=>{ el.querySelector('#swk'+i).style.transform=v?'translateX(26px)':''; el.querySelector('#w'+i).setAttribute('stroke',on&&v?lit:dim); });
+  el.querySelector('#w4').setAttribute('stroke',on&&r.o1?lit:dim); el.querySelector('#w5').setAttribute('stroke',on&&r.o2?lit:dim); el.querySelector('#w6').setAttribute('stroke',on&&r.y?lit:dim);
+  el.querySelector('#lY').setAttribute('fill',on&&r.y?'#ffd76a':'#331');
+  S.gates.forEach((gi,i)=>{ el.querySelector('#gs'+i).innerHTML=gateShape(GATES[gi]); el.querySelector('#gt'+i).textContent=GATES[gi]; });
+  el.querySelector('#sfDoor').style.transform=S.f.safe?'scaleX(.08) skewY(-6deg)':'';
+  el.querySelector('#sfLamp').setAttribute('fill',S.f.safe?'#3cff6a':'#c0281f');
+  el.querySelector('#sfPad').style.display=S.taken.pad?'none':''; el.querySelector('#sfBook').style.display=S.taken.codebook?'none':'';
+},
+act(a,h,el){
+  if(a.startsWith('take-')){ give(a.slice(5)); refresh(); return; }
+  if(a==='safedoor'){ if(!S.f.safe) say('Solid steel. The lock is electronic, controlled by the logic panel above.'); return; }
+  if(this._run) return;
+  if(!pw('light')){ say('The logic panel is dark. It runs off the lighting circuit.'); return; }
+  if(a.startsWith('sw-')){ const i=+a.slice(3); S.inp[i]^=1; sfx.click(); refresh(); return; }
+  if(a.startsWith('g-')){ if(S.f.safe) return; const i=+a.slice(2); S.gates[i]=(S.gates[i]+1)%GATES.length; sfx.clunk(); refresh(); return; }
+  if(a==='test'){ if(S.f.safe) return; this._run=true; let ok=true; LOGIC_ROWS.forEach((_,ri)=>el.querySelector('#ck'+ri).textContent='');
+    LOGIC_ROWS.forEach((row,ri)=>setTimeout(()=>{ S.inp=row.slice(0,4); this.update(el); const y=this.calc().y; const pass=y===row[4]; if(!pass) ok=false; const c=el.querySelector('#ck'+ri); c.textContent=pass?'✓':'✗'; c.setAttribute('fill',pass?'#2e8b3a':'#c0281f'); pass?sfx.beep():sfx.buzz(); },400+ri*650));
+    setTimeout(()=>{ this._run=false; if(ok){ sfx.bolt(); setTimeout(()=>{ sfx.creak(); S.f.safe=true; note('Matched the logic lock specification. The wall safe opened.'); refresh(); say('Every row passes. Bolts withdraw and the safe door swings open.'); },600); } else { S.mistakes++; say('The test failed on at least one row. The safe stays locked.'); } save(); },400+LOGIC_ROWS.length*650+300);
+  }
+}};
+/* ============================== DOCUMENTS ============================== */
+const CN=['black','brown','red','orange','yellow','green','blue','violet','grey','white'];
+function pager(title,pages,start=0,onPage){
+  let p=start;
+  const draw=(box,turn)=>{ const pg=box.querySelector('.page'); pg.innerHTML=pages[p].h+`<span class="pno">${p+1} / ${pages.length}</span>`; if(turn){ pg.classList.remove('turn'); void pg.offsetWidth; pg.classList.add('turn'); } box.querySelector('#pgPrev').disabled=p===0; box.querySelector('#pgNext').disabled=p===pages.length-1; box.querySelector('#pgTabs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('ghost',i!==p)); if(onPage) onPage(p); };
+  modal(title,`<div id="pgTabs" class="mbtns" style="margin:0 0 .7rem">${pages.map((pg,i)=>`<button class="mbtn ghost" data-i="${i}" style="padding:.25rem .6rem;font-size:.9rem">${pg.t}</button>`).join('')}</div><div class="book"><div class="page"></div></div><div class="mbtns"><button class="mbtn ghost" id="pgPrev">Previous</button><button class="mbtn" id="pgNext">Next</button></div>`,box=>{
+    draw(box); box.querySelector('#pgPrev').onclick=()=>{ if(p>0){p--; sfx.page(); draw(box,1);} }; box.querySelector('#pgNext').onclick=()=>{ if(p<pages.length-1){p++; sfx.page(); draw(box,1);} };
+    box.querySelectorAll('#pgTabs button').forEach(b=>b.onclick=()=>{ p=+b.dataset.i; sfx.page(); draw(box,1); });
+  });
+}
+const MANUAL=[
+ {t:'Resistors',h:`<h3>Reading resistor colour bands</h3><p>Hold the resistor with the gold band on the right. The first two bands are digits; the third is how many zeros follow (the multiplier). Gold means ±5% tolerance.</p><table class="ttab">${CN.map((c,i)=>`<tr><td style="background:${RCOL[i]};width:2.4em"></td><td style="text-align:left">${c}</td><td>${i}</td><td>×${['1','10','100','1 k','10 k','100 k','1 M','10 M','',''][i]||'—'}</td></tr>`).join('')}</table><p><i>Example:</i> green, blue, red = 5, 6, two zeros = 5,600 Ω = 5.6 kΩ.</p>`},
+ {t:'Logic gates',h:`<h3>Two-input logic gates</h3><p>A gate outputs 1 or 0 depending on its two inputs.</p><table class="ttab"><tr><th>A</th><th>B</th><th>AND</th><th>OR</th><th>XOR</th><th>NAND</th><th>NOR</th></tr>${[[0,0],[0,1],[1,0],[1,1]].map(([a,b])=>`<tr><td>${a}</td><td>${b}</td>${GATES.map(g=>`<td>${GF[g](a,b)}</td>`).join('')}</tr>`).join('')}</table><p>AND has a flat back and round front. OR has a curved back and pointed front. XOR adds a second curved line behind the OR. A small circle on the output (NAND, NOR) inverts the result.</p><p>To work out an unknown circuit, look for rows that force one gate's answer, then use those to narrow down the others.</p>`},
+ {t:'ASCII and hex',h:`<h3>Characters as numbers</h3><p>Each character is stored as one byte: eight bits, written from bit 7 (worth 128) down to bit 0 (worth 1). Add the values of the 1 bits. Two hexadecimal digits (0–9, A–F) describe the same byte: the first digit counts sixteens.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:.1rem .8rem;font-family:var(--tape);font-size:.92rem">${[32,...Array.from({length:10},(_,i)=>48+i),...Array.from({length:26},(_,i)=>65+i)].map(n=>`<span>${n===32?'space':String.fromCharCode(n)} ${String(n).padStart(3,' ')} ${n.toString(16).toUpperCase()}</span>`).join('')}</div><p style="font-size:.9rem">Columns: character, decimal, hex.</p>`},
+ {t:'Oscilloscope',h:`<h3>Measuring frequency from a trace</h3><p>The screen is a grid of divisions. The TIME/DIV setting says how much time each horizontal division represents.</p><p>Measure the period: count how many divisions one complete wave (peak to next peak) covers, then multiply by TIME/DIV.</p><p style="font-family:var(--tape)">frequency = 1 ÷ period</p><p><i>Example:</i> one wave spans 4 divisions at 20 ns/div. Period = 80 ns = 0.00000008 s. Frequency = 12,500,000 Hz = 12.5 MHz.</p><p>The scope here is wired to the receiver. When the receiver sits exactly on a station, the trace locks still.</p>`},
+ {t:'Tape and spectra',h:`<h3>Tape speed and pitch</h3><p>A recording played faster than it was recorded sounds higher. Doubling the tape speed doubles every frequency on the tape and halves its duration.</p><p>Always play a tape at the speed it was recorded, marked in inches per second (ips).</p><p>The spectrum analyser draws frequency upward and time across the screen. Human speech sits roughly between 0.3 and 3.4 kHz.</p>`},
+];
+function openPad(){
+  const pages=[{t:'Method',h:`<h3>One-time pad: method</h3><p>The broadcast begins with an indicator: the pad page to use.</p><p>Write the received digits above the page's digits. Subtract each pad digit from the received digit. If the result goes below zero, add 10. Never borrow from the next digit.</p><p><i>Example:</i> received 3, pad 7: 3 − 7 = −4, add 10 = 6.</p><p>Then read the result in pairs:</p><table class="ttab"><tr>${'ABCDEFGHIJKLM'.split('').map((c,i)=>`<td>${c}<br>${String(i+1).padStart(2,'0')}</td>`).join('')}</tr><tr>${'NOPQRSTUVWXYZ'.split('').map((c,i)=>`<td>${c}<br>${i+14}</td>`).join('')}</tr><tr>${'0123456789'.split('').map((c,i)=>`<td>${c}<br>${30+i}</td>`).join('')}<td colspan="3"></td></tr></table>`}];
+  [27,28,29,30,31].forEach(n=>{ let d=''; if(n===PADPAGE) d=PADDIGITS; else { let x=n*7919; for(let i=0;i<20;i++){ x=(x*48271)%2147483647; d+=x%10; } } pages.push({t:'Page '+n,h:`<h3>Page ${n}</h3><p style="font-family:var(--tape);font-size:1.6rem;letter-spacing:.2em;line-height:2">${d.match(/.{5}/g).join('&nbsp; ')}</p><p class="dimnote">Destroy after use.</p>`}); });
+  pager('One-time pad',pages,0,p=>{ if(p===3) note('Pad page 29: 77126 00332 41062 54837.'); });
+}
+function openCodebook(){
+  const rows=[['24','II V I','QX AT BM DL HJ OU'],['25','III I IV','EM FN GT IW KP RZ'],['26','IV II V','AV BS CG DL FU HZ'],['27','V III II','BJ CK DQ ER LX SY'],['28','I IV III','AW CN EJ GP HO MZ']];
+  modal('Key list, September 1983',`<div class="paper" style="font-family:var(--tape)"><p style="font-family:var(--tape)">SECRET. M-4 machine settings by day.</p><table class="ttab"><tr><th>Day</th><th>Rotors, left to right</th><th>Plugboard pairs</th></tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table><p style="font-family:var(--tape);margin-top:.8rem">Procedure: fit the rotors, connect the plug pairs, set the three windows to the message key, then type the cipher text. The lit lamps give the plain text. The message key travels separately on the card system.</p></div><p class="mtext">Tonight is the 26th of September.</p>`);
+  note('Key list for 26 September: rotors IV II V, plugs AV BS CG DL FU HZ. The message key comes "on the card system".');
+}
+function openTrace(){
+  let d=''; for(let i=0;i<=300;i++){ const xd=i/30; d+=(i?'L':'M')+(30+xd*56).toFixed(1)+' '+(254-90*Math.sin(2*Math.PI*xd/3.2+.4)).toFixed(1); }
+  modal('Scope trace printout',`<div class="paper" style="padding:.8rem"><svg viewBox="0 0 620 520" style="width:min(600px,86vw);display:block"><rect x="30" y="30" width="560" height="448" fill="#f6f7ef" stroke="#555"/>${Array.from({length:11},(_,i)=>`<line x1="${30+i*56}" y1="30" x2="${30+i*56}" y2="478" stroke="#9ab09c"/>`).join('')}${Array.from({length:9},(_,i)=>`<line x1="30" y1="${30+i*56}" x2="590" y2="${30+i*56}" stroke="#9ab09c"/>`).join('')}<path d="${d}" stroke="#1f5e30" stroke-width="2.5" fill="none"/><text x="30" y="505" font-family="Courier Prime, monospace" font-size="18" fill="#222">TIME/DIV 50 ns   VOLTS/DIV 0.2</text><text x="590" y="20" text-anchor="end" font-family="Courier Prime, monospace" font-style="italic" font-size="17" fill="#2b55c0">Nightjar carrier. Read it, tune it. H.K.</text></svg></div>`);
+  note('Kessler\'s scope trace of the Nightjar carrier was taken at 50 ns per division.');
+}
+function openCard(){
+  const rows=[...CARD_TXT].map(c=>c.charCodeAt(0).toString(2).padStart(8,'0'));
+  modal('Punch card',`<div style="overflow-x:auto"><svg viewBox="0 0 640 400" style="width:min(620px,88vw);display:block"><path d="M10 10 H630 V390 H50 L10 350Z" fill="#e9dcae" stroke="#9a8a5a" stroke-width="3"/>${[7,6,5,4,3,2,1,0].map((b,i)=>`<text x="${170+i*56}" y="44" text-anchor="middle" font-family="Courier Prime, monospace" font-size="15" fill="#6b5a2a">bit ${b}</text>`).join('')}${rows.map((r,ri)=>`<text x="70" y="${86+ri*40}" font-family="Courier Prime, monospace" font-size="16" fill="#6b5a2a">row ${ri+1}</text>`+[...r].map((b,i)=>b==='1'?`<rect x="${162+i*56}" y="${70+ri*40}" width="16" height="22" fill="#1b1b18"/>`:`<text x="${170+i*56}" y="${88+ri*40}" text-anchor="middle" font-family="Courier Prime, monospace" font-size="14" fill="#b8a676">0</text>`).join('')).join('')}</svg></div><p class="mtext">A punched hole is a 1. Each row is one character.</p>`);
+}
+function examine(id){
+  if(id==='manual') return pager('Technical manual',MANUAL);
+  if(id==='pad') return openPad();
+  if(id==='codebook') return openCodebook();
+  if(id==='trace') return openTrace();
+  if(id==='cardA') return openCard();
+  if(id==='key') return modal('Cascade key',`<p class="mtext">A brass key on a red lanyard, stamped CASCADE. The duty officer's key for the relay console.</p>`);
+  if(id==='reel') return modal('Tape reel',`<div class="paper mtext" style="font-family:var(--tape)"><p>KESSLER. PERSONAL. DO NOT ERASE.</p><p>Recorded at 3¾ ips.</p><p>Box 3 is above the voices.</p></div>`,null,()=>note('Kessler\'s tape label: recorded at 3¾ ips; "Box 3 is above the voices".'));
+  if(id==='abortcard') return modal('Abort card',`<div class="paper mtext" style="font-family:var(--tape)"><p style="color:#c0281f">CASCADE ABORT. DUTY OFFICER ONLY.</p><p>Code is 12 characters, four boxes of three.</p><table class="ttab" style="margin:.4rem 0"><tr><th>Box 1</th><th>Box 2</th><th>Box 3</th><th>Box 4</th></tr><tr><td>voice traffic</td><td>machine traffic</td><td>my tape</td><td>the card</td></tr><tr><td>_ _ _</td><td>_ _ _</td><td>_ _ _</td><td>_ _ _</td></tr></table><p>Turn key to ARMED. Enter all twelve. Lift cover, press ABORT.</p><p>Each box hides behind its own lock. You'll know them when you see the word BOX. H.K.</p></div>`);
+  if(id==='hexdump') return modal('Hex printout',`<div class="tapeview" style="white-space:pre;word-break:normal">DUMP 0000  KEYSTORE / CARD SYS 2\n\n0000:  53 54 41 52 54 20 47 4B 57\n\nEND OF DUMP</div><p class="mtext">Nine bytes, written in hexadecimal.</p>`);
+  if(id==='intercept') return modal('Intercept printout',`<div class="tapeview" style="white-space:pre-wrap;word-break:normal">0311Z  INTERCEPT  NIGHTJAR &gt; CASCADE\nTRAFFIC: M-4 MACHINE\nMESSAGE KEY: SEE CARD SYSTEM\n\nQTIEL BFTTO\n\nEND</div>`,null,()=>note('Intercepted M-4 cipher text: QTIEL BFTTO.'));
+}
+
+/* ============================== HINTS / JOURNAL / MENU ============================== */
+function allPower(){ return SLOTS.every(s=>pw(s.c)); }
+function objective(){
+  const f=S.f;
+  if(!allPower()) return {k:'power',g:'Restore power to all five circuits.',h:['The fuse panel needs a load resistor of the right value in each circuit. Kessler\'s desk holds a technical manual.','Read each resistor\'s colour bands with the manual\'s chart. Watch out: two spares look almost identical to the right values.','Lighting 470 Ω: yellow violet brown. Receiver 2.2 kΩ: red red red. Scope 10 kΩ: brown black orange. Tape 68 kΩ: blue grey orange. Cipher room 1 MΩ: brown black green. Breaker off to fit them, then on.']};
+  if(!f.safe) return {k:'safe',g:'Open the wall safe.',h:['The logic panel above the safe needs the right gate in each of its three sockets.','Use the specification rows. Row A=1,B=0,C=0,D=0 → Y=1, and row A=0,B=0,C=1,D=1 → Y=0, are good places to start. The manual explains every gate.','First gate (A, B): XOR. Second gate (C, D): NAND. Final gate: AND. Then run the test.']};
+  if(!f.heard) return {k:'radio',g:'Find the Nightjar station.',h:['Kessler\'s clipboard holds a scope trace of the station\'s carrier wave. The manual explains how to read one.','One full wave spans 3.2 divisions at 50 ns per division. Work out the period, then the frequency.','Period = 3.2 × 50 ns = 160 ns, so frequency = 1 ÷ 160 ns = 6.25 MHz. Tune the receiver to 6.250.']};
+  if(!f.b1) return {k:'box1',g:'Decode the numbers broadcast (box 1).',h:['The broadcast starts with 29: that is the page of the one-time pad from the safe.','Subtract each pad digit from each broadcast digit, adding 10 if the result goes negative. Read the result in pairs with the table in the pad.','Broadcast 79278 41846 46333 24451 minus pad 77126 00332 41062 54837 gives 02152 41514 05371 70624: B O X O N E 7 Q F X. Box 1 is 7QF.']};
+  if(!f.b2) return {k:'rotor',g:'Decrypt the machine traffic (box 2).',h:['The intercept is M-4 machine traffic. The key list in the safe gives tonight\'s rotors and plugboard; the message key is "on the card system".','The hex printout by the line printer converts to text with the manual\'s ASCII table. It gives the three start letters.','Hex 53 54 41 52 54 20 47 4B 57 reads START GKW. Fit rotors IV II V, plug AV BS CG DL FU HZ, set the windows to G K W and type QTIELBFTTO. The lamps read BOXTWOXLUX: box 2 is LUX.']};
+  if(!f.b3) return {k:'tape',g:'Find what is hidden on Kessler\'s tape (box 3).',h:['Kessler\'s reel is in his desk drawer. Thread it on the tape deck.','The label says it was recorded at 3¾ ips and that box 3 is "above the voices". Speech sits below about 3.4 kHz.','Set the deck to 3¾, play the tape and set the analyser to the 5–10 kHz band. Three characters scroll past: 9, K, Z.']};
+  if(!f.cardDone) return {k:'card',g:'Read the punch card (box 4).',h:['The punch card in the reader\'s hopper holds eight characters. Examine it, or feed it through the reader.','Each row is one byte: add the values of the punched bits (bit 7 = 128 down to bit 0 = 1), then look the number up in the manual\'s ASCII table.','The rows are 66, 79, 88, 52, 32, 77, 52, 84: B O X 4 (space) M 4 T. Box 4 is M4T.']};
+  if(!f.won) return {k:'abort',g:'Enter the abort code at the console.',h:['You need Kessler\'s key. He left his jacket on his chair.','Put the key in the console\'s switch and turn it to ARMED. The code is box 1, 2, 3 then 4.','Type 7QF LUX 9KZ M4T, press ENTER, lift the yellow cover and press ABORT.']};
+  return {k:'done',g:'Cascade has been stopped.',h:[]};
+}
+function openHints(){
+  const o=objective(); const n=S.tier[o.k]||0;
+  const extra=(o.k==='box1'||o.k==='card')?`<div class="mbtns"><button class="mbtn ghost" id="hDone">I've worked this box out</button></div>`:'';
+  modal('Hints',`<div class="goal">${o.g}</div>${o.h.slice(0,n).map((t,i)=>`<div class="hint"><b>Hint ${i+1}.</b> ${t}</div>`).join('')}${n<o.h.length?`<div class="mbtns"><button class="mbtn" id="hNext">${n===0?'Show a hint':n===o.h.length-1?'Show the answer':'Show another hint'}</button></div>`:''}${extra}`,box=>{
+    const b=box.querySelector('#hNext'); if(b) b.onclick=()=>{ S.tier[o.k]=n+1; S.hints++; $('#hintN').textContent=S.hints; save(); closeModal(); openHints(); };
+    const d=box.querySelector('#hDone'); if(d) d.onclick=()=>{ if(o.k==='box1') S.f.b1=true; else S.f.cardDone=true; save(); closeModal(); openHints(); };
+  });
+}
+function openJournal(){ const o=objective(); modal('Journal',`<div class="goal">Current aim: ${o.g}</div><p class="mtext" style="font-size:.95rem;opacity:.8">Boxes can be solved in any order once the power and safe are done.</p>${S.journal.length?`<ol class="jlist">${S.journal.map(j=>`<li>${esc(j)}</li>`).join('')}</ol>`:'<p class="mtext">Nothing noted yet.</p>'}`); }
+function openMenu(){ modal('Menu',`<p class="mtext">Progress saves automatically. The countdown pauses while this tab is hidden.</p><div class="mbtns"><button class="mbtn" id="mnRes">Resume</button><button class="mbtn ghost" id="mnRestart">Restart from the beginning</button></div>`,box=>{ box.querySelector('#mnRes').onclick=closeModal; box.querySelector('#mnRestart').onclick=()=>{ const b=box.querySelector('#mnRestart'); if(b.dataset.c){ wipe(); location.reload(); } else { b.dataset.c=1; b.textContent='Click again to erase your progress'; } }; }); }
+$('#bHint').onclick=()=>{ audioInit(); openHints(); };
+$('#bJournal').onclick=()=>{ audioInit(); openJournal(); };
+$('#bMenu').onclick=()=>{ audioInit(); openMenu(); };
+$('#bSound').onclick=()=>{ audioInit(); setSound(!A.on); if(!A.on) try{speechSynthesis.cancel();}catch(e){} };
+function showWin(){
+  $('#winText').textContent='At 04:12 the confirmation is withdrawn. Command logs the launch report as a sensor fault. Nobody outside this bunker will ever know how close it came.';
+  $('#winStats').innerHTML=`<span class="stat"><b>${segFmt(Math.max(0,remain()))}</b>left on the clock</span><span class="stat"><b>${fmtT(S.t)}</b>time taken</span><span class="stat"><b>${S.hints}</b>hints</span><span class="stat"><b>${S.mistakes}</b>mistakes</span>`;
+  $('#win').classList.add('on');
+}
+$('#bAgain').onclick=()=>{ wipe(); location.reload(); };
+$('#bStay').onclick=()=>$('#win').classList.remove('on');
+$('#bRewind').onclick=()=>{ S.rew=(S.rew||0)+1; save(); $('#fail').classList.remove('on'); tickHUD(); };
+
+/* ============================== INIT ============================== */
+function grain(){ const c=$('#grain'); c.width=320; c.height=180; const x=c.getContext('2d'); const d=x.createImageData(320,180); for(let i=0;i<d.data.length;i+=4){ const v=Math.random()*255; d.data[i]=d.data[i+1]=d.data[i+2]=v; d.data[i+3]=255; } x.putImageData(d,0,0); c.style.width='100%'; c.style.height='100%'; }
+function tickHUD(){
+  const r=remain(), s=segFmt(r); $('#timer').textContent='T−'+s;
+  const el=curEl(); ['#ovCD','#cnCD'].forEach(id=>{ const n=el&&el.querySelector(id); if(n) n.textContent=S.f.won?'--:--':s; });
+  if(r<=0 && !S.f.won && !$('#fail').classList.contains('on')){ sfx.alarm(); $('#fail').classList.add('on'); }
+}
+function start(){
+  audioInit(); $('#intro').classList.remove('on'); S.started=true; S.sel=null; if(!S.fuse) S.fuse=[null,null,null,null,null];
+  renderInv(); $('#hintN').textContent=S.hints;
+  const el=L('L0'); cur='L0'; L('L1').classList.add('hidden'); mount(el,S.scene); el.classList.remove('hidden');
+  $('#back').style.display=scenes[S.scene].parent?'block':'none';
+  if(pw('light')) hum(true);
+  if(S.t<5) setTimeout(()=>say('Emergency lighting only. On the wall, a red countdown is running.',4200),900);
+  tickHUD(); save(); if(S.f.won) showWin();
+}
+setInterval(()=>{ if(!S.started||S.f.won||document.hidden||$('#fail').classList.contains('on')) return; S.t++; tickHUD(); if(remain()%60===0) sfx.beep(); if(S.t%10===0) save(); if(Math.random()<.04 && pw('light')){ const v=$('#flash'); v.style.background='#000'; v.animate([{opacity:0},{opacity:.35},{opacity:0},{opacity:.2},{opacity:0}],{duration:420}); } },1000);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ toneOff(); try{speechSynthesis.cancel();}catch(e){} } });
+grain();
+const saved=load();
+if(saved && saved.started){ $('#bContinue').style.display=''; $('#bContinue').onclick=()=>{ S=saved; S.sel=null; start(); }; }
+$('#bBegin').onclick=()=>{ S=fresh(); start(); };
+})();
+</script>
+</body>
+</html>
